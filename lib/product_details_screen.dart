@@ -11,135 +11,300 @@ class ProductDetailsScreen extends StatefulWidget {
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
 }
 
-class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+class _ProductDetailsScreenState extends State<ProductDetailsScreen>
+    with SingleTickerProviderStateMixin {
   int quantity = 1;
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
+      ),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: Text(widget.product.name)),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Image.asset(
-                widget.product.image,
-                height: 220,
-              ),
+      appBar: AppBar(
+        title: Text(widget.product.name),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.pop(context);
+          },
+        ),
+      ),
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return FadeTransition(
+            opacity: _fadeAnimation,
+            child: Transform.scale(
+              scale: _scaleAnimation.value,
+              child: child,
             ),
-
-            const SizedBox(height: 20),
-
-            Text(
-              widget.product.name,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              widget.product.price,
-              style: const TextStyle(
-                fontSize: 20,
-                color: Color(0xFF5B5FDC),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 15),
-
-            Text(
-              widget.product.description,
-              style: const TextStyle(color: Colors.grey),
-            ),
-
-            const SizedBox(height: 25),
-
-            /// Quantity Selector
-            Row(
-              children: [
-                const Text(
-                  "Quantity: ",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(width: 10),
-                _qtyButton(Icons.remove, () {
-                  if (quantity > 1) {
-                    setState(() => quantity--);
-                  }
-                }),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    quantity.toString(),
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                _qtyButton(Icons.add, () {
-                  setState(() => quantity++);
-                }),
-              ],
-            ),
-
-            const Spacer(),
-
-            /// Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _addToCartWithQuantity();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade200,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hero animation for the image
+              Center(
+                child: Hero(
+                  tag: 'product_${widget.product.name}',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Image.asset(
+                        widget.product.image,
+                        height: 220,
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                    child: const Text("Add to Cart"),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      _addToCartWithQuantity();
-                      // Navigate to cart after adding
-                      // You might want to add navigation here
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              "Added ${quantity}x ${widget.product.name} to cart"),
-                          action: SnackBarAction(
-                            label: 'View Cart',
-                            onPressed: () {
-                              // Navigate to cart screen
-                              // This depends on your navigation structure
-                            },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Animated text entry
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0.4, 0.7, curve: Curves.easeOut),
+                  ),
+                ),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: const Interval(0.4, 0.7, curve: Curves.easeIn),
+                    ),
+                  ),
+                  child: Text(
+                    widget.product.name,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0.5, 0.8, curve: Curves.easeOut),
+                  ),
+                ),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: const Interval(0.5, 0.8, curve: Curves.easeIn),
+                    ),
+                  ),
+                  child: Text(
+                    widget.product.price,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      color: Color(0xFF5B5FDC),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0.6, 0.9, curve: Curves.easeOut),
+                  ),
+                ),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: const Interval(0.6, 0.9, curve: Curves.easeIn),
+                    ),
+                  ),
+                  child: Text(
+                    widget.product.description,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 25),
+
+              /// Quantity Selector
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0.7, 1.0, curve: Curves.easeOut),
+                  ),
+                ),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: const Interval(0.7, 1.0, curve: Curves.easeIn),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        "Quantity: ",
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 10),
+                      _qtyButton(Icons.remove, () {
+                        if (quantity > 1) {
+                          setState(() => quantity--);
+                        }
+                      }),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          quantity.toString(),
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      _qtyButton(Icons.add, () {
+                        setState(() => quantity++);
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              /// Buttons
+              SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.5),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: _controller,
+                    curve: const Interval(0.8, 1.0, curve: Curves.easeOut),
+                  ),
+                ),
+                child: FadeTransition(
+                  opacity: Tween<double>(begin: 0, end: 1).animate(
+                    CurvedAnimation(
+                      parent: _controller,
+                      curve: const Interval(0.8, 1.0, curve: Curves.easeIn),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _addToCartWithQuantity();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey.shade200,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text("Add to Cart"),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _addToCartWithQuantity();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    "Added ${quantity}x ${widget.product.name} to cart"),
+                                action: SnackBarAction(
+                                  label: 'View Cart',
+                                  onPressed: () {
+                                    // Navigate to cart screen
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF5B5FDC),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                          child: const Text(
+                            "Buy Now",
+                            style: TextStyle(color: Colors.white),
                           ),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5B5FDC),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text(
-                      "Buy Now",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -159,7 +324,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  // NEW METHOD: Add to cart with selected quantity
   void _addToCartWithQuantity() {
     // Check if product already exists in cart
     final existingItemIndex = Cart.items.indexWhere(
@@ -174,11 +338,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       Cart.items.add(CartItem(product: widget.product, quantity: quantity));
     }
 
-    // Show confirmation
+    // Show confirmation with animation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Added ${quantity}x ${widget.product.name} to cart"),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 10),
+            Text("Added ${quantity}x ${widget.product.name} to cart"),
+          ],
+        ),
         duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
     );
 
