@@ -29,7 +29,14 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.onCartUpdated != null) {
+        widget.onCartUpdated!();
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -38,6 +45,13 @@ class _CartScreenState extends State<CartScreen> {
       ),
       body: Cart.items.isEmpty ? _buildEmptyCart() : _buildCartWithItems(),
     );
+  }
+
+  // In all cart modification methods, call the callback:
+  void _modifyCart() {
+    if (widget.onCartUpdated != null) {
+      widget.onCartUpdated!();
+    }
   }
 
   Widget _buildEmptyCart() {
@@ -136,8 +150,10 @@ class _CartScreenState extends State<CartScreen> {
                 setState(() {
                   if (item.quantity > 1) {
                     Cart.decreaseQty(item.product);
+                    _modifyCart();
                   } else {
                     Cart.removeItem(item.product);
+                    _modifyCart();
                   }
                 });
               },
@@ -154,6 +170,7 @@ class _CartScreenState extends State<CartScreen> {
               onPressed: () {
                 setState(() {
                   Cart.increaseQty(item.product);
+                  _modifyCart();
                 });
               },
             ),
@@ -162,6 +179,7 @@ class _CartScreenState extends State<CartScreen> {
               onPressed: () {
                 setState(() {
                   Cart.removeItem(item.product);
+                  _modifyCart();
                 });
               },
             ),

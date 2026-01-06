@@ -5,8 +5,9 @@ import 'cart_model.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
+  final VoidCallback? onCartUpdated;
 
-  const HomeScreen({super.key, required this.userName});
+  const HomeScreen({super.key, required this.userName, this.onCartUpdated});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -20,6 +21,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     filteredProducts = products;
+  }
+
+  void refreshCart() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   void _onSearchChanged(String query) {
@@ -123,6 +130,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 👟 Product Card
   Widget _productCard(Product product) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.onCartUpdated != null) {
+        widget.onCartUpdated!();
+      }
+    });
+
+    void _modifyCart() {
+      if (widget.onCartUpdated != null) {
+        widget.onCartUpdated!();
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
@@ -162,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ElevatedButton(
               onPressed: () {
                 Cart.addToCart(product);
+                _modifyCart();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text("${product.name} added to cart")),
                 );
