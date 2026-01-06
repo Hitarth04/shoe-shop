@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'home_screen.dart';
 import 'cart_screen.dart';
+import 'wishlist_screen.dart'; // Add this import
 import 'cart_model.dart';
+import 'wishlist_model.dart'; // Add this import
 
 class MainNavScreen extends StatefulWidget {
   final String userName;
@@ -17,21 +19,21 @@ class _MainNavScreenState extends State<MainNavScreen> {
   int currentIndex = 0;
   DateTime? currentBackPressTime;
   int _cartItemCount = 0;
+  int _wishlistCount = 0; // Add wishlist counter
 
   @override
   void initState() {
     super.initState();
     _updateCartCount();
+    _updateWishlistCount(); // Initialize wishlist count
   }
 
-  // Method to switch tabs
   void _switchToHomeTab() {
     setState(() {
       currentIndex = 0;
     });
   }
 
-  // Method to update cart count
   void _updateCartCount() {
     final newCount = Cart.items.fold(0, (sum, item) => sum + item.quantity);
     if (newCount != _cartItemCount) {
@@ -41,16 +43,31 @@ class _MainNavScreenState extends State<MainNavScreen> {
     }
   }
 
+  void _updateWishlistCount() {
+    final newCount = Wishlist.count;
+    if (newCount != _wishlistCount) {
+      setState(() {
+        _wishlistCount = newCount;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(
         userName: widget.userName,
-        onCartUpdated: _updateCartCount, // Pass callback to HomeScreen
+        onCartUpdated: _updateCartCount,
+        onWishlistUpdated: _updateWishlistCount, // Add this
+      ),
+      WishlistScreen(
+        // Add wishlist screen
+        onWishlistUpdated: _updateWishlistCount,
+        onCartUpdated: _updateCartCount,
       ),
       CartScreen(
         onContinueShopping: _switchToHomeTab,
-        onCartUpdated: _updateCartCount, // Pass callback to CartScreen
+        onCartUpdated: _updateCartCount,
       ),
     ];
 
@@ -79,22 +96,19 @@ class _MainNavScreenState extends State<MainNavScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
           child: GNav(
-            // Center the tabs properly
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-
-            // Visual properties
+            tabMargin: const EdgeInsets.symmetric(horizontal: 8),
+            tabBorderRadius: 12,
             backgroundColor: Colors.white,
-            rippleColor: const Color(0xFF5B5FDC).withOpacity(0.1),
+            rippleColor: const Color(0xFF5B5FDC).withOpacity(0.2),
             hoverColor: const Color(0xFF5B5FDC).withOpacity(0.1),
-            gap: 10,
+            gap: 8,
             activeColor: Colors.white,
             iconSize: 24,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             duration: const Duration(milliseconds: 400),
             tabBackgroundColor: const Color(0xFF5B5FDC),
-            color: Colors.grey[600],
-
-            // Tabs
+            color: Colors.grey[700],
             tabs: [
               const GButton(
                 icon: Icons.home,
@@ -102,7 +116,49 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 textStyle: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
+                ),
+              ),
+              GButton(
+                icon: Icons.favorite,
+                text: 'Wishlist',
+                textStyle: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFFFFFFF),
+                ),
+                iconActiveColor: const Color(0xFFFFFFFF),
+                leading: Stack(
+                  children: [
+                    const Icon(Icons.favorite_border),
+                    if (_wishlistCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            _wishlistCount > 99
+                                ? '99+'
+                                : _wishlistCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               GButton(
@@ -111,14 +167,11 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 textStyle: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                  color: Color(0xFFFFFFFF),
                 ),
-                // Use Stack for badge
-                iconActiveColor: Colors.white,
-                iconColor: Colors.grey[700],
                 leading: Stack(
                   children: [
-                    const Icon(Icons.shopping_cart_rounded),
+                    const Icon(Icons.shopping_cart_outlined),
                     if (_cartItemCount > 0)
                       Positioned(
                         right: 0,
@@ -134,8 +187,8 @@ class _MainNavScreenState extends State<MainNavScreen> {
                             minHeight: 16,
                           ),
                           child: Text(
-                            _cartItemCount > 9
-                                ? '9+'
+                            _cartItemCount > 99
+                                ? '99+'
                                 : _cartItemCount.toString(),
                             style: const TextStyle(
                               color: Colors.white,
@@ -154,10 +207,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
             onTabChange: (index) {
               setState(() {
                 currentIndex = index;
-                // Update cart count when switching to cart tab
-                if (index == 1) {
-                  _updateCartCount();
-                }
+                // Update counts when switching tabs
+                if (index == 1) _updateWishlistCount();
+                if (index == 2) _updateCartCount();
               });
             },
           ),
@@ -167,7 +219,6 @@ class _MainNavScreenState extends State<MainNavScreen> {
   }
 
   Future<bool> _onWillPop() {
-    // If not on home tab, switch to home tab
     if (currentIndex != 0) {
       setState(() {
         currentIndex = 0;
@@ -175,7 +226,6 @@ class _MainNavScreenState extends State<MainNavScreen> {
       return Future.value(false);
     }
 
-    // If on home tab, implement double tap to exit
     DateTime now = DateTime.now();
     if (currentBackPressTime == null ||
         now.difference(currentBackPressTime!) > const Duration(seconds: 2)) {
