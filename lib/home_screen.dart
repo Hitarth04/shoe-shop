@@ -222,9 +222,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Cart.addToCart(product);
                 _modifyCart();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("${product.name} added to cart")),
-                );
               },
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF5B5FDC),

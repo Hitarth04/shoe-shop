@@ -73,7 +73,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const LoginScreen(),
@@ -101,7 +101,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   height: 50,
                   child: OutlinedButton(
                     onPressed: () {
-                      Navigator.pushReplacement(
+                      Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const SignupScreen(),

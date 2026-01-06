@@ -20,11 +20,23 @@ class _SignupScreenState extends State<SignupScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF5B5FDC),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF5B5FDC),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            // Navigate back to WelcomeScreen
+            Navigator.pop(context);
+          },
+        ),
+      ),
       body: SafeArea(
         child: Center(
           child: Container(
@@ -39,20 +51,46 @@ class _SignupScreenState extends State<SignupScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    /// Illustration
-                    Image.asset(
-                      'assets/images/sign_up.png',
-                      height: 170,
+                    // Animated image
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 800),
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.translate(
+                            offset: Offset(0.0, 20 * (1 - value)),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Image.asset(
+                        'assets/images/sign_up.png',
+                        height: 170,
+                      ),
                     ),
 
                     const SizedBox(height: 20),
 
-                    /// Title
-                    const Text(
-                      "Sign Up",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
+                    // Animated title
+                    TweenAnimationBuilder(
+                      duration: const Duration(milliseconds: 600),
+                      tween: Tween<double>(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value,
+                          child: Transform.scale(
+                            scale: 0.8 + 0.2 * value,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Sign Up",
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
 
@@ -205,36 +243,25 @@ class _SignupScreenState extends State<SignupScreen> {
                       child: SizedBox(
                         width: 140,
                         height: 45,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) {
-                              final fullName = nameController.text.trim();
-                              final firstName = fullName.split(' ').first;
-                              final capitalizedFirstName =
-                                  firstName[0].toUpperCase() +
-                                      firstName.substring(1).toLowerCase();
-
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => MainNavScreen(
-                                    userName: capitalizedFirstName,
+                        child: _isLoading
+                            ? const Center(
+                                child: CircularProgressIndicator(
+                                  color: Color(0xFF5B5FDC),
+                                ),
+                              )
+                            : ElevatedButton(
+                                onPressed: _handleSignup,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF5B5FDC),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(25),
                                   ),
                                 ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5B5FDC),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                          child: const Text(
-                            "Sign Up",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
+                                child: const Text(
+                                  "Sign Up",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ),
                       ),
                     ),
 
@@ -245,16 +272,17 @@ class _SignupScreenState extends State<SignupScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Text("Already have an account?"),
-                        GestureDetector(
-                          onTap: () {
+                        TextButton(
+                          onPressed: () {
                             Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const LoginScreen()),
+                                builder: (context) => const LoginScreen(),
+                              ),
                             );
                           },
                           child: const Text(
-                            " Login",
+                            "Login",
                             style: TextStyle(
                               color: Color(0xFF5B5FDC),
                               fontWeight: FontWeight.bold,
@@ -292,11 +320,80 @@ class _SignupScreenState extends State<SignupScreen> {
       validator: validator,
       onChanged: onChanged,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon),
+        prefixIcon: Icon(icon, color: const Color(0xFF5B5FDC)),
         suffixIcon: suffixIcon,
         labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF5B5FDC), width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.grey),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+      ),
+    );
+  }
+
+  void _handleSignup() async {
+    // Hide keyboard
+    FocusScope.of(context).unfocus();
+
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulate API call delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 10),
+            const Text("Account created successfully!"),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 1),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    final fullName = nameController.text.trim();
+    final firstName = fullName.split(' ').first;
+    final capitalizedFirstName =
+        firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MainNavScreen(
+          userName: capitalizedFirstName,
         ),
       ),
     );
