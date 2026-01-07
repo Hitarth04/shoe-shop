@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:login_app/home_screen.dart';
+import 'package:login_app/main_nav_screen.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 import 'onboarding_screen.dart';
+import 'main_nav_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +23,9 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: const MainNavScreen(
+        userName: AutofillHints.username,
+      ),
     );
   }
 }

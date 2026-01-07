@@ -131,7 +131,13 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 iconActiveColor: const Color(0xFFFFFFFF),
                 leading: Stack(
                   children: [
-                    const Icon(Icons.favorite_border),
+                    Icon(
+                      currentIndex == 1
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color:
+                          currentIndex == 1 ? Colors.white : Colors.grey[700],
+                    ),
                     if (_wishlistCount > 0)
                       Positioned(
                         right: 0,
@@ -172,7 +178,13 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 ),
                 leading: Stack(
                   children: [
-                    const Icon(Icons.shopping_cart_outlined),
+                    Icon(
+                      currentIndex == 2
+                          ? Icons.shopping_cart
+                          : Icons.shopping_cart_outlined,
+                      color:
+                          currentIndex == 2 ? Colors.white : Colors.grey[700],
+                    ),
                     if (_cartItemCount > 0)
                       Positioned(
                         right: 0,

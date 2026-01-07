@@ -243,9 +243,14 @@ class _WishlistScreenState extends State<WishlistScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: const Color(0xFF5B5FDC),
             ),
-            child: const Text("Clear All"),
+            child: const Text(
+              "Clear All",
+              style: TextStyle(
+                color: Colors.white,
+              ),
+            ),
           ),
         ],
       ),
