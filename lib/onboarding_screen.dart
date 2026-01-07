@@ -30,21 +30,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 },
                 children: const [
                   _OnboardingPage(
-                    image: 'assets/images/task1.png',
-                    title: 'Organize Your Tasks',
-                    subtitle:
-                        'Easily manage your daily tasks and stay productive.',
+                    image: 'assets/images/1-Photoroom.png',
+                    title: 'The Daily Wear with Fashion',
+                    subtitle: 'Find all types of shoes at one stop.',
                   ),
                   _OnboardingPage(
-                    image: 'assets/images/task2.png',
-                    title: 'Stay Focused',
+                    image: 'assets/images/shoe_store_01.png',
+                    title: 'Shop Variety',
                     subtitle:
-                        'Set priorities and focus on what matters the most.',
+                        'Shop from a wide range of shoes to get the perfect fit.',
                   ),
                   _OnboardingPage(
-                    image: 'assets/images/task3.png',
-                    title: 'Achieve Your Goals',
-                    subtitle: 'Track progress and achieve goals efficiently.',
+                    image: 'assets/images/shoe_store_07.png',
+                    title: 'Stay in Trend',
+                    subtitle: 'Be on top of your fashion game.',
                   ),
                 ],
               ),
@@ -126,8 +125,8 @@ class _OnboardingPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(image, height: 260),
-          const SizedBox(height: 40),
+          Image.asset(image, height: 500),
+          // const SizedBox(height: 20),
           Text(
             title,
             style: const TextStyle(

@@ -7,11 +7,13 @@ import 'cart_model.dart';
 class WishlistScreen extends StatefulWidget {
   final VoidCallback? onWishlistUpdated;
   final VoidCallback? onCartUpdated;
+  final VoidCallback? onBrowseProducts;
 
   const WishlistScreen({
     super.key,
     this.onWishlistUpdated,
     this.onCartUpdated,
+    this.onBrowseProducts,
   });
 
   @override
@@ -66,9 +68,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ),
           const SizedBox(height: 30),
           ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
+            onPressed: _navigateToHomeTab,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF5B5FDC),
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
@@ -249,5 +249,18 @@ class _WishlistScreenState extends State<WishlistScreen> {
         ],
       ),
     );
+  }
+
+  void _navigateToHomeTab() {
+    if (widget.onBrowseProducts != null) {
+      widget.onBrowseProducts!();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Switch to Home tab to continue shopping"),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }

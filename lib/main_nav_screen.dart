@@ -64,6 +64,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
         // Add wishlist screen
         onWishlistUpdated: _updateWishlistCount,
         onCartUpdated: _updateCartCount,
+        onBrowseProducts: _switchToHomeTab,
       ),
       CartScreen(
         onContinueShopping: _switchToHomeTab,
