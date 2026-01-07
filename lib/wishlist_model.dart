@@ -7,18 +7,10 @@ class Wishlist {
 
   /// Add product to wishlist
   static void addToWishlist(Product product) {
-    if (!_items.contains(product)) {
-      // Create a copy with wishlisted flag
-      final wishlistedProduct = Product(
-        name: product.name,
-        image: product.image,
-        price: product.price,
-        description: product.description,
-        isWishlisted: true,
-      );
-      _items.add(wishlistedProduct);
+    if (!_items.any((item) => item.name == product.name)) {
+      _items.add(product);
 
-      // Update the original product's wishlist status
+      // Update the product's wishlist status globally
       product.isWishlisted = true;
     }
   }
@@ -27,7 +19,7 @@ class Wishlist {
   static void removeFromWishlist(Product product) {
     _items.removeWhere((item) => item.name == product.name);
 
-    // Update the original product's wishlist status
+    // Update the product's wishlist status globally
     product.isWishlisted = false;
   }
 

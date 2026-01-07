@@ -3,6 +3,7 @@ import 'product_model.dart';
 import 'wishlist_model.dart';
 import 'product_details_screen.dart';
 import 'cart_model.dart';
+import 'product_manager.dart';
 
 class WishlistScreen extends StatefulWidget {
   final VoidCallback? onWishlistUpdated;
@@ -138,7 +139,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ProductDetailsScreen(
-                product: product,
+                product: ProductManager.getProductByName(product.name),
                 onWishlistChanged: () {
                   setState(() {});
                   if (widget.onWishlistUpdated != null) {
