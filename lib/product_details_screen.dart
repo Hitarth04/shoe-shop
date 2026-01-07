@@ -94,7 +94,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 // Wishlist Heart on Image
                 Positioned(
                   top: 10,
-                  right: 20,
+                  right: 30,
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
