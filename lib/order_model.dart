@@ -49,6 +49,7 @@ class Order {
             price: item['product_price'],
             image: item['product_image'],
             description: '',
+            isWishlisted: false,
           ),
           quantity: item['quantity'],
         );

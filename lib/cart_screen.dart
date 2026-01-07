@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'cart_model.dart';
 import 'checkout_screen.dart';
 import 'order_model.dart';
+import 'address_screen.dart';
+import 'product_model.dart';
 
 class CartScreen extends StatefulWidget {
   final VoidCallback? onContinueShopping;
@@ -318,14 +320,31 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Navigate to CheckoutScreen
+    // Check if user has any saved addresses
+    final addresses = await OrderManager.getAddresses();
+
+    if (addresses.isEmpty) {
+      // Show dialog to add address first
+      await _showAddAddressDialog();
+      return;
+    }
+
+    // Check if there's a default address
+    Address selectedAddress = addresses.firstWhere(
+      (address) => address.isDefault,
+      orElse: () => addresses.first,
+    );
+
+    // Navigate to CheckoutScreen with selected address
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CheckoutScreen(
+          selectedAddress: selectedAddress,
+          addresses: addresses,
           onPaymentComplete: () async {
             // Create an order when payment is complete
-            await _createOrder();
+            await _createOrder(selectedAddress);
 
             // Clear the cart after successful order
             await Cart.clearCart();
@@ -349,24 +368,86 @@ class _CartScreenState extends State<CartScreen> {
               ),
             );
           },
+          onAddressChanged: (Address newAddress) {
+            // Update address if changed in checkout
+            setState(() {
+              selectedAddress = newAddress;
+            });
+          },
         ),
       ),
     );
   }
 
-  // Add this method to create an order
-  Future<void> _createOrder() async {
+  Future<void> _showAddAddressDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Add Address"),
+        content: const Text(
+            "You need to add a shipping address before placing an order. Would you like to add one now?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close the dialog
+
+              // Navigate to address screen
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddressScreen(
+                    fromCheckout: true,
+                  ),
+                ),
+              );
+
+              // If address was added successfully, proceed to checkout
+              if (result == true) {
+                _proceedToCheckout();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF5B5FDC),
+            ),
+            child: const Text(
+              "Add Address",
+              style: TextStyle(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Update _createOrder method to include address
+  Future<void> _createOrder(Address shippingAddress) async {
     // Generate a unique order ID
-    final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+    final orderId = "ORD${DateTime.now().millisecondsSinceEpoch}";
 
     // Create the order
     final order = Order(
       orderId: orderId,
       orderDate: DateTime.now(),
-      items: List.from(Cart.items), // Make a copy of cart items
+      items: List.from(Cart.items.map((item) => CartItem(
+            product: Product(
+              name: item.product.name,
+              image: item.product.image,
+              price: item.product.price,
+              description: item.product.description,
+              isWishlisted: item.product.isWishlisted,
+            ),
+            quantity: item.quantity,
+          ))), // Deep copy of cart items
       totalAmount: Cart.totalPrice,
       status: 'Processing',
-      shippingAddress: null, // You can add address selection in checkout
+      shippingAddress: shippingAddress,
     );
 
     // Save the order using shared preferences

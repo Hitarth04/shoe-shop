@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
 import 'cart_model.dart';
+import 'order_model.dart';
+import 'address_selection_sheet.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final VoidCallback? onPaymentComplete;
+  final Address? selectedAddress;
+  final List<Address> addresses;
+  final Function(Address) onAddressChanged;
 
-  const CheckoutScreen({super.key, this.onPaymentComplete});
+  const CheckoutScreen(
+      {super.key,
+      this.onPaymentComplete,
+      this.selectedAddress,
+      required this.addresses,
+      required this.onAddressChanged});
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -52,6 +62,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Address Section - ADD THIS FIRST
+            if (widget.selectedAddress != null) _buildAddressSection(),
+
+            const SizedBox(height: 20),
+
             // Order Summary Section
             _buildOrderSummary(subtotal, shipping, discount, total),
 
@@ -288,6 +303,105 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  // In the build method, add address selection section
+  Widget _buildAddressSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "Shipping Address",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                TextButton(
+                  onPressed: _changeAddress,
+                  child: const Text("Change"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (widget.selectedAddress != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5B5FDC).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          widget.selectedAddress!.tag,
+                          style: const TextStyle(
+                            color: Color(0xFF5B5FDC),
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      if (widget.selectedAddress!.isDefault)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            "Default",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(widget.selectedAddress!.fullName),
+                  Text(widget.selectedAddress!.phone),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.selectedAddress!.fullAddress,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeAddress() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => AddressSelectionSheet(
+        addresses: widget.addresses,
+        selectedAddress: widget.selectedAddress,
+        onAddressSelected: (address) {
+          widget.onAddressChanged(address);
+          Navigator.pop(context);
+          setState(() {});
+        },
       ),
     );
   }

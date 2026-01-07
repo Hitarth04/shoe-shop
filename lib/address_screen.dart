@@ -3,7 +3,9 @@ import 'package:uuid/uuid.dart';
 import 'order_model.dart';
 
 class AddressScreen extends StatefulWidget {
-  const AddressScreen({super.key});
+  final bool fromCheckout;
+
+  const AddressScreen({super.key, this.fromCheckout = false});
 
   @override
   State<AddressScreen> createState() => _AddressScreenState();
@@ -34,7 +36,14 @@ class _AddressScreenState extends State<AddressScreen> {
         onSave: (newAddress) async {
           await OrderManager.saveAddress(newAddress);
           await _loadAddresses();
-          Navigator.pop(context);
+
+          // If coming from checkout, pop with result
+          if (widget.fromCheckout) {
+            Navigator.pop(context); // Close bottom sheet
+            Navigator.pop(context, true); // Return to cart with success
+          } else {
+            Navigator.pop(context); // Just close bottom sheet
+          }
         },
       ),
     );
@@ -93,6 +102,15 @@ class _AddressScreenState extends State<AddressScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Saved Addresses"),
+        leading: widget.fromCheckout
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  Navigator.pop(
+                      context, true); // Return true when coming from checkout
+                },
+              )
+            : null,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
