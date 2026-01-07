@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'cart_model.dart';
 import 'checkout_screen.dart';
+import 'order_model.dart';
 
 class CartScreen extends StatefulWidget {
   final VoidCallback? onContinueShopping;
@@ -234,21 +235,7 @@ class _CartScreenState extends State<CartScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CheckoutScreen(
-                      onPaymentComplete: () {
-                        // This will be called when payment is complete
-                        if (mounted) {
-                          setState(() {}); // Refresh the cart screen
-                        }
-                      },
-                    ),
-                  ),
-                );
-              },
+              onPressed: _proceedToCheckout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5B5FDC),
                 shape: RoundedRectangleBorder(
@@ -317,5 +304,72 @@ class _CartScreenState extends State<CartScreen> {
         ),
       );
     }
+  }
+
+  void _proceedToCheckout() async {
+    // Check if cart is empty
+    if (Cart.items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Your cart is empty!"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Navigate to CheckoutScreen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CheckoutScreen(
+          onPaymentComplete: () async {
+            // Create an order when payment is complete
+            await _createOrder();
+
+            // Clear the cart after successful order
+            await Cart.clearCart();
+
+            // Update cart count
+            if (widget.onCartUpdated != null) {
+              widget.onCartUpdated!();
+            }
+
+            // Refresh the cart screen
+            if (mounted) {
+              setState(() {});
+            }
+
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Order placed successfully!"),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // Add this method to create an order
+  Future<void> _createOrder() async {
+    // Generate a unique order ID
+    final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Create the order
+    final order = Order(
+      orderId: orderId,
+      orderDate: DateTime.now(),
+      items: List.from(Cart.items), // Make a copy of cart items
+      totalAmount: Cart.totalPrice,
+      status: 'Processing',
+      shippingAddress: null, // You can add address selection in checkout
+    );
+
+    // Save the order using shared preferences
+    await OrderManager.saveOrder(order);
   }
 }

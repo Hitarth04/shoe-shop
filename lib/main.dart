@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:login_app/home_screen.dart';
-import 'package:login_app/main_nav_screen.dart';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 import 'onboarding_screen.dart';
-import 'main_nav_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -23,9 +20,7 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
         useMaterial3: true,
       ),
-      home: const MainNavScreen(
-        userName: AutofillHints.username,
-      ),
+      home: const OnboardingScreen(),
     );
   }
 }
@@ -65,7 +60,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 ),
                 const SizedBox(height: 10.0),
                 const Text(
-                  'Welcome to our app, where you manage your daily tasks making your life easy',
+                  'Welcome to our app, where you shop for all the shoe fashion you need!',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14.0,

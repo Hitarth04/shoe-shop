@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'home_screen.dart';
 import 'cart_screen.dart';
-import 'wishlist_screen.dart'; // Add this import
+import 'wishlist_screen.dart';
 import 'cart_model.dart';
-import 'wishlist_model.dart'; // Add this import
+import 'wishlist_model.dart';
+import 'profile_screen.dart';
+import 'login_screen.dart';
 
 class MainNavScreen extends StatefulWidget {
   final String userName;
@@ -24,6 +26,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
   @override
   void initState() {
     super.initState();
+    _initializeCart();
     _updateCartCount();
     _updateWishlistCount(); // Initialize wishlist count
   }
@@ -32,6 +35,11 @@ class _MainNavScreenState extends State<MainNavScreen> {
     setState(() {
       currentIndex = 0;
     });
+  }
+
+  Future<void> _initializeCart() async {
+    await Cart.initialize();
+    _updateCartCount();
   }
 
   void _updateCartCount() {
@@ -70,6 +78,17 @@ class _MainNavScreenState extends State<MainNavScreen> {
         onContinueShopping: _switchToHomeTab,
         onCartUpdated: _updateCartCount,
       ),
+      ProfileScreen(
+        userName: widget.userName,
+        onLogout: () {
+          // Handle logout - navigate to login screen
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        },
+      )
     ];
 
     return WillPopScope(
@@ -132,9 +151,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 leading: Stack(
                   children: [
                     Icon(
-                      currentIndex == 1
-                          ? Icons.favorite
-                          : Icons.favorite_border,
+                      currentIndex == 1 ? Icons.favorite : Icons.favorite,
                       color:
                           currentIndex == 1 ? Colors.white : Colors.grey[700],
                     ),
@@ -181,7 +198,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                     Icon(
                       currentIndex == 2
                           ? Icons.shopping_cart
-                          : Icons.shopping_cart_outlined,
+                          : Icons.shopping_cart,
                       color:
                           currentIndex == 2 ? Colors.white : Colors.grey[700],
                     ),
@@ -213,6 +230,15 @@ class _MainNavScreenState extends State<MainNavScreen> {
                         ),
                       ),
                   ],
+                ),
+              ),
+              const GButton(
+                icon: Icons.person,
+                text: 'Profile',
+                textStyle: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFFFFFFFF),
                 ),
               ),
             ],
