@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'order_model.dart';
+import 'address_screen.dart';
 
 class AddressSelectionSheet extends StatelessWidget {
   final List<Address> addresses;
@@ -92,8 +93,13 @@ class AddressSelectionSheet extends StatelessWidget {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
-              // Navigate to add new address screen
+              Navigator.pop(context); // Close current sheet
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AddressScreen(fromCheckout: true),
+                ),
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF5B5FDC),

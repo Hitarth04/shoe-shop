@@ -83,11 +83,22 @@ class Cart {
     return _items.fold(0.0, (sum, item) => sum + item.itemTotal);
   }
 
-  /// 🎫 Get final total (after discount)
+  /// 🧾 Get tax amount (18%)
+  static double get taxAmount {
+    return totalPrice * 0.18;
+  }
+
+  /// 🚚 Get shipping amount
+  static double get shippingAmount {
+    return totalPrice > 0 ? 30.0 : 0.0;
+  }
+
+  /// 🎫 Get final total (after discount and tax)
   static double get finalTotal {
     final subtotal = totalPrice;
-    final shipping = subtotal > 0 ? 30.0 : 0.0;
-    return subtotal + shipping - discountAmount;
+    final shipping = shippingAmount;
+    final tax = taxAmount;
+    return subtotal + shipping + tax - discountAmount;
   }
 
   /// 📦 Get item count
@@ -148,10 +159,10 @@ class Cart {
     await _saveCart();
   }
 
-  /// Get total amount (alternative calculation)
-  static double get totalAmount {
-    return _items.fold(0.0, (total, item) {
-      return total + item.itemTotal;
-    });
-  }
+  // /// Get total amount (alternative calculation)
+  // static double get totalAmount {
+  //   return _items.fold(0.0, (total, item) {
+  //     return total + item.itemTotal;
+  //   });
+  // }
 }

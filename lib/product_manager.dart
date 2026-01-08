@@ -5,13 +5,13 @@ class ProductManager {
     Product(
         name: "Nike Air Max",
         image: "assets/images/shoes.png",
-        price: "₹8,999",
+        price: "₹4,999",
         description:
             'Dynamic Air unit system: Features dual-pressure tubes with varied pressure in the heel and midfoot for a reactive and smooth stepping sensation.'),
     Product(
         name: "Adidas Ultraboost",
         image: "assets/images/shoes2.png",
-        price: "₹11,499",
+        price: "₹1,499",
         description:
             'Balanced cushioning and flexibility: These shoes offer a perfect equilibrium between cushioning for soft landings and flexibility for a natural running motion.'),
     Product(
@@ -41,13 +41,25 @@ class ProductManager {
     Product(
         name: "Puma RS-X",
         image: "assets/images/shoes3.png",
-        price: "₹7,999",
+        price: "₹8,999",
         description:
             "RS-X is back. This future-retro silhouette made waves when it dropped in 2018, celebrated for its disruptive design, fresh material mixes, and bold colours. Today, RS-X returns for a new generation of consumers who live to express their individuality. It's here to start a revolution of self-expression. This version features a mesh upper, synthetic overlays, and reflective details."),
     Product(
         name: "New Balance 574",
         image: "assets/images/shoes4.png",
-        price: "₹9,299",
+        price: "₹999",
+        description:
+            "The most New Balance shoe ever’ says it all, right? No, actually. The 574 might be our unlikeliest icon. The 574 was built to be a reliable shoe that could do a lot of different things well rather than as a platform for revolutionary technology, or as a premium materials showcase. This unassuming, unpretentious versatility is exactly what launched the 574 into the ranks of all-time greats."),
+    Product(
+        name: "New Balance 550",
+        image: "assets/images/shoes4.png",
+        price: "₹1,999",
+        description:
+            "The most New Balance shoe ever’ says it all, right? No, actually. The 574 might be our unlikeliest icon. The 574 was built to be a reliable shoe that could do a lot of different things well rather than as a platform for revolutionary technology, or as a premium materials showcase. This unassuming, unpretentious versatility is exactly what launched the 574 into the ranks of all-time greats."),
+    Product(
+        name: "New Balance 590",
+        image: "assets/images/shoes4.png",
+        price: "₹2,999",
         description:
             "The most New Balance shoe ever’ says it all, right? No, actually. The 574 might be our unlikeliest icon. The 574 was built to be a reliable shoe that could do a lot of different things well rather than as a platform for revolutionary technology, or as a premium materials showcase. This unassuming, unpretentious versatility is exactly what launched the 574 into the ranks of all-time greats."),
   ];

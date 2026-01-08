@@ -220,7 +220,7 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
               Text(
-                "₹${(Cart.totalPrice + (Cart.totalPrice > 0 ? 30 : 0)).toStringAsFixed(2)}",
+                "₹${(Cart.totalPrice).toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -431,26 +431,50 @@ class _CartScreenState extends State<CartScreen> {
     // Generate a unique order ID
     final orderId = "ORD${DateTime.now().millisecondsSinceEpoch}";
 
-    // Create the order
+    // Create a copy of the actual cart items
+    final orderItems = Cart.items
+        .map((cartItem) => CartItem(
+              product: Product(
+                name: cartItem.product.name,
+                image: cartItem.product.image,
+                price: cartItem.product.price,
+                description: cartItem.product.description ?? '',
+                isWishlisted: cartItem.product.isWishlisted,
+              ),
+              quantity: cartItem.quantity,
+            ))
+        .toList();
+
+    // Calculate order amounts PROPERLY
+    final subtotal = Cart.totalPrice;
+    final shipping = Cart.shippingAmount;
+    final tax = Cart.taxAmount;
+    final discount = Cart.discountAmount;
+    final finalTotal = Cart.finalTotal;
+
+    print("=== Order Calculation ===");
+    print("Subtotal: ₹$subtotal");
+    print("Shipping: ₹$shipping");
+    print("Tax (18%): ₹$tax");
+    print("Discount: ₹$discount");
+    print("Final Total: ₹$finalTotal");
+
+    // Create the order with ALL amounts
     final order = Order(
       orderId: orderId,
       orderDate: DateTime.now(),
-      items: List.from(Cart.items.map((item) => CartItem(
-            product: Product(
-              name: item.product.name,
-              image: item.product.image,
-              price: item.product.price,
-              description: item.product.description,
-              isWishlisted: item.product.isWishlisted,
-            ),
-            quantity: item.quantity,
-          ))), // Deep copy of cart items
-      totalAmount: Cart.totalPrice,
+      items: orderItems,
+      subtotalAmount: subtotal, // Add subtotal
+      shippingAmount: shipping, // Add shipping
+      taxAmount: tax, // Add tax
+      discountAmount: discount, // Add discount
+      totalAmount: finalTotal, // Use finalTotal which includes everything
       status: 'Processing',
       shippingAddress: shippingAddress,
+      appliedCoupon: Cart.appliedCoupon, // Save the coupon code
     );
 
-    // Save the order using shared preferences
+    // Save the order
     await OrderManager.saveOrder(order);
   }
 }

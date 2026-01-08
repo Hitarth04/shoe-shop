@@ -7,17 +7,27 @@ class Order {
   final String orderId;
   final DateTime orderDate;
   final List<CartItem> items;
+  final double subtotalAmount; // NEW
+  final double shippingAmount; // NEW
+  final double taxAmount; // NEW
+  final double discountAmount; // NEW
   final double totalAmount;
   final String status;
   final Address? shippingAddress;
+  final String? appliedCoupon; // NEW
 
   Order({
     required this.orderId,
     required this.orderDate,
     required this.items,
+    required this.subtotalAmount, // ADD
+    required this.shippingAmount, // ADD
+    required this.taxAmount, // ADD
+    required this.discountAmount, // ADD
     required this.totalAmount,
     required this.status,
     this.shippingAddress,
+    this.appliedCoupon, // ADD
   });
 
   Map<String, dynamic> toJson() {
@@ -32,9 +42,14 @@ class Order {
                 'product_image': item.product.image,
               })
           .toList(),
+      'subtotalAmount': subtotalAmount, // ADD
+      'shippingAmount': shippingAmount, // ADD
+      'taxAmount': taxAmount, // ADD
+      'discountAmount': discountAmount, // ADD
       'totalAmount': totalAmount,
       'status': status,
       'shippingAddress': shippingAddress?.toJson(),
+      'appliedCoupon': appliedCoupon, // ADD
     };
   }
 
@@ -54,11 +69,16 @@ class Order {
           quantity: item['quantity'],
         );
       }).toList(),
+      subtotalAmount: (json['subtotalAmount'] ?? 0).toDouble(), // ADD
+      shippingAmount: (json['shippingAmount'] ?? 0).toDouble(), // ADD
+      taxAmount: (json['taxAmount'] ?? 0).toDouble(), // ADD
+      discountAmount: (json['discountAmount'] ?? 0).toDouble(), // ADD
       totalAmount: json['totalAmount'],
       status: json['status'],
       shippingAddress: json['shippingAddress'] != null
           ? Address.fromJson(json['shippingAddress'])
           : null,
+      appliedCoupon: json['appliedCoupon'], // ADD
     );
   }
 }

@@ -186,13 +186,44 @@ class _OrdersScreenState extends State<OrdersScreen> {
             const SizedBox(height: 12),
 
             // Product Names (Show first 2-3 products)
-            if (order.items.isNotEmpty) ...[
+            if (order.items.isNotEmpty && order.items.length <= 2)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var i = 0;
-                      i < (order.items.length > 2 ? 2 : order.items.length);
-                      i++)
+                  for (var item in order.items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          const Text("• ", style: TextStyle(fontSize: 14)),
+                          Expanded(
+                            child: Text(
+                              item.product.name,
+                              style: const TextStyle(fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            "x${item.quantity}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              )
+            else if (order.items.isNotEmpty && order.items.length > 2)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show first 2 items
+                  for (var i = 0; i < 2; i++)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
@@ -218,21 +249,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                         ],
                       ),
                     ),
-                  if (order.items.length > 2)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        "+ ${order.items.length - 2} more items",
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
+                  // Show remaining count
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      "+ ${order.items.length - 2} more items",
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
                       ),
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-            ],
+
+            const SizedBox(height: 12),
 
             Divider(color: Colors.grey.shade300),
 
@@ -275,218 +306,247 @@ class OrderDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate totals
-    final subtotal = order.totalAmount;
-    final shipping = 30.0;
-    final tax = subtotal * 0.18;
-    final total = subtotal + shipping + tax;
+    // Use the saved amounts from the order
+    final subtotal = order.subtotalAmount;
+    final shipping = order.shippingAmount;
+    final tax = order.taxAmount;
+    final discount = order.discountAmount;
+    final total = order.totalAmount;
 
     return Container(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Order Details",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          _buildDetailRow("Order ID", order.orderId),
-          _buildDetailRow("Order Date",
-              "${order.orderDate.day}/${order.orderDate.month}/${order.orderDate.year}"),
-          _buildDetailRow("Status", order.status),
-
-          if (order.shippingAddress != null) ...[
-            const SizedBox(height: 16),
+      constraints: BoxConstraints(
+        maxHeight:
+            MediaQuery.of(context).size.height * 0.9, // Limit to 90% of screen
+      ),
+      child: SingleChildScrollView(
+        // This is the key fix
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             const Text(
-              "Shipping Address",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              "Order Details",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    order.shippingAddress!.fullName,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  Text(order.shippingAddress!.phone),
-                  const SizedBox(height: 4),
-                  Text(order.shippingAddress!.fullAddress),
-                ],
-              ),
-            ),
-          ],
+            const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
-          const Text(
-            "Order Items",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 12),
+            _buildDetailRow("Order ID", order.orderId),
+            _buildDetailRow("Order Date",
+                "${order.orderDate.day}/${order.orderDate.month}/${order.orderDate.year}"),
+            _buildDetailRow("Status", order.status),
 
-          // Order Items List
-          if (order.items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                "No items in this order",
-                style: TextStyle(color: Colors.grey),
+            // Show applied coupon if any
+            if (order.appliedCoupon != null)
+              _buildDetailRow("Applied Coupon", order.appliedCoupon!),
+
+            if (order.shippingAddress != null) ...[
+              const SizedBox(height: 16),
+              const Text(
+                "Shipping Address",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            )
-          else
-            ...order.items.map((item) {
-              final price = _parsePrice(item.product.price);
-              final itemTotal = price * item.quantity;
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
+              const SizedBox(height: 8),
+              Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Image
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: item.product.image.isNotEmpty
-                          ? Image.asset(
-                              item.product.image,
-                              fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(Icons.image_not_supported);
-                              },
-                            )
-                          : const Icon(Icons.image_not_supported),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Product Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.product.name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                "Qty: ${item.quantity}",
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              Text(
-                                "Price: ${item.product.price}",
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Item Total: ₹${itemTotal.toStringAsFixed(2)}",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF5B5FDC),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-
-          const SizedBox(height: 20),
-          Divider(color: Colors.grey.shade300),
-
-          // Order Summary
-          const Text(
-            "Order Summary",
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 12),
-
-          Column(
-            children: [
-              _buildSummaryRow("Subtotal", "₹${subtotal.toStringAsFixed(2)}"),
-              _buildSummaryRow("Shipping", "₹${shipping.toStringAsFixed(2)}"),
-              _buildSummaryRow("Tax (18%)", "₹${tax.toStringAsFixed(2)}"),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: Colors.grey.shade300, width: 2),
-                    bottom: BorderSide(color: Colors.grey.shade300, width: 2),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      "Total Amount",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
                     Text(
-                      "₹${total.toStringAsFixed(2)}",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5B5FDC),
-                      ),
+                      order.shippingAddress!.fullName,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    Text(order.shippingAddress!.phone),
+                    const SizedBox(height: 4),
+                    Text(
+                      order.shippingAddress!.fullAddress,
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
 
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5B5FDC),
-              ),
-              child: const Text("Close"),
+            const SizedBox(height: 20),
+            const Text(
+              "Order Items",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-          ),
-        ],
+            const SizedBox(height: 12),
+
+            // Order Items List
+            if (order.items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  "No items in this order",
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              ...order.items.map((item) {
+                final price = _parsePrice(item.product.price);
+                final itemTotal = price * item.quantity;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      // Product Image - Keep original size
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: item.product.image.isNotEmpty
+                            ? Image.asset(
+                                item.product.image,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(Icons.image_not_supported);
+                                },
+                              )
+                            : const Icon(Icons.image_not_supported),
+                      ),
+
+                      const SizedBox(width: 12),
+
+                      // Product Details - Keep original sizes
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.product.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  "Qty: ${item.quantity}",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                Text(
+                                  "Price: ${item.product.price}",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Item Total: ₹${itemTotal.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF5B5FDC),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+
+            const SizedBox(height: 20),
+            Divider(color: Colors.grey.shade300),
+
+            // Order Summary - Use saved amounts
+            const Text(
+              "Order Summary",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+
+            Column(
+              children: [
+                _buildSummaryRow("Subtotal", "₹${subtotal.toStringAsFixed(2)}"),
+                _buildSummaryRow("Shipping", "₹${shipping.toStringAsFixed(2)}"),
+                _buildSummaryRow("Tax (18%)", "₹${tax.toStringAsFixed(2)}"),
+
+                // Show discount if applied
+                if (discount > 0)
+                  _buildSummaryRow(
+                    "Discount (${order.appliedCoupon ?? ''})",
+                    "-₹${discount.toStringAsFixed(2)}",
+                    isDiscount: true,
+                  ),
+
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Colors.grey.shade300, width: 2),
+                      bottom: BorderSide(color: Colors.grey.shade300, width: 2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Total Amount",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        "₹${total.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF5B5FDC),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF5B5FDC),
+                ),
+                child: const Text(
+                  "Close",
+                  style: TextStyle(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -498,20 +558,34 @@ class OrderDetailsSheet extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text("$label:", style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              textAlign: TextAlign.right,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(String label, String value) {
+  Widget _buildSummaryRow(String label, String value,
+      {bool isDiscount = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(label,
+              style: TextStyle(
+                color: isDiscount ? Colors.green : Colors.grey,
+              )),
+          Text(value,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: isDiscount ? Colors.green : Colors.black,
+              )),
         ],
       ),
     );
@@ -519,7 +593,6 @@ class OrderDetailsSheet extends StatelessWidget {
 
   double _parsePrice(String priceString) {
     try {
-      // Handle cases where price might be "₹8,999" or "8999"
       final cleanString = priceString
           .replaceAll('₹', '')
           .replaceAll(',', '')

@@ -43,10 +43,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Get all amounts from Cart model for consistency
     final subtotal = Cart.totalPrice;
-    final shipping = subtotal > 0 ? 30.0 : 0.0;
-    final discount = _discountAmount;
-    final total = subtotal + shipping - discount;
+    final shipping = Cart.shippingAmount;
+    final tax = Cart.taxAmount;
+    final discount = _discountAmount > 0 ? _discountAmount : 0.0;
+    final total = Cart.finalTotal;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -68,7 +70,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 20),
 
             // Order Summary Section
-            _buildOrderSummary(subtotal, shipping, discount, total),
+            _buildOrderSummary(),
 
             const SizedBox(height: 30),
 
@@ -83,7 +85,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 40),
 
             // Proceed to Payment Button
-            _buildProceedButton(total),
+            _buildProceedButton(),
 
             const SizedBox(height: 20),
           ],
@@ -92,8 +94,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildOrderSummary(
-      double subtotal, double shipping, double discount, double total) {
+  Widget _buildOrderSummary() {
+    // Get all amounts from Cart model
+    final subtotal = Cart.totalPrice;
+    final shipping = Cart.shippingAmount;
+    final tax = Cart.taxAmount;
+    final discount = _discountAmount > 0 ? _discountAmount : 0.0;
+    final total = Cart.finalTotal;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
@@ -118,6 +126,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
             // Shipping
             _buildSummaryRow("Shipping", "₹${shipping.toStringAsFixed(2)}"),
+
+            // Tax
+            _buildSummaryRow("Tax (18%)", "₹${tax.toStringAsFixed(2)}"),
 
             // Discount
             if (discount > 0)
@@ -551,13 +562,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildProceedButton(double total) {
+  Widget _buildProceedButton() {
+    // Get the final total from Cart
+    final total = Cart.finalTotal;
+
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
         onPressed: () {
-          _processPayment(total);
+          _processPayment();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5B5FDC),
@@ -626,6 +640,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _appliedCoupon = couponCode;
       _discountAmount = discountAmount;
       _couponController.clear();
+
+      // Also update the Cart class
+      Cart.applyDiscount(discountAmount, couponCode);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -641,6 +658,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() {
       _appliedCoupon = null;
       _discountAmount = 0.0;
+
+      // Also update the Cart class
+      Cart.removeDiscount();
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -660,14 +680,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  void _processPayment(double total) async {
+  void _processPayment() async {
+    // Get the final total from Cart
+    final total = Cart.finalTotal;
+
     if (Cart.items.isEmpty) {
       _showError("Your cart is empty");
       return;
     }
-
-    // Store cart items count before clearing (for success message)
-    final itemCount = Cart.items.length;
 
     // Show processing dialog
     showDialog(
@@ -701,11 +721,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
-    // CLEAR CART
-    Cart.items.clear();
-    Cart.discountAmount = 0.0;
-    Cart.appliedCoupon = null;
-
     // Call the callback if it still exists
     if (widget.onPaymentComplete != null) {
       widget.onPaymentComplete!();
@@ -723,7 +738,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const SizedBox(height: 20),
                 Text(
                   "Order Total: ₹${total.toStringAsFixed(2)}\n"
-                  "Items: $itemCount",
+                  "Items: ${Cart.itemCount}",
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
@@ -755,9 +770,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         true;
 
     if (shouldContinue && mounted) {
-      Cart.items.clear();
-      // Pop back to CartScreen
-      Navigator.pop(context);
+      Navigator.pop(context); // Pop back to CartScreen
     }
   }
 
