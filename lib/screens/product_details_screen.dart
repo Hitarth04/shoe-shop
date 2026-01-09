@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'product_model.dart';
-import 'cart_model.dart';
-import 'wishlist_model.dart'; // Add this import
+import '../models/product_model.dart';
+import '../services/cart_service.dart';
+import '../services/wishlist_service.dart';
+import '../utils/constants.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product product;
-  final VoidCallback? onWishlistChanged; // Add this callback
 
   const ProductDetailsScreen({
     super.key,
     required this.product,
-    this.onWishlistChanged, // Add this
   });
 
   @override
@@ -18,6 +17,9 @@ class ProductDetailsScreen extends StatefulWidget {
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
+  final CartService cartService = CartService();
+  final WishlistService wishlistService = WishlistService();
+
   int quantity = 1;
 
   @override
@@ -31,35 +33,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Wishlist Icon in AppBar
           IconButton(
             icon: Icon(
-              Wishlist.contains(widget.product)
+              wishlistService.contains(widget.product)
                   ? Icons.favorite
                   : Icons.favorite_border,
-              color:
-                  Wishlist.contains(widget.product) ? Colors.red : Colors.white,
+              color: wishlistService.contains(widget.product)
+                  ? Colors.red
+                  : Colors.white,
             ),
             onPressed: () {
               setState(() {
-                Wishlist.toggleWishlist(widget.product);
-                if (widget.onWishlistChanged != null) {
-                  widget.onWishlistChanged!();
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      Wishlist.contains(widget.product)
-                          ? "Added to wishlist"
-                          : "Removed from wishlist",
-                    ),
-                    backgroundColor: Wishlist.contains(widget.product)
-                        ? Colors.green
-                        : Colors.orange,
-                    duration: const Duration(seconds: 1),
-                  ),
-                );
+                wishlistService.toggleWishlist(widget.product);
               });
             },
           ),
@@ -70,38 +55,29 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image with Wishlist Heart
             Stack(
               children: [
                 Center(
-                  child: Hero(
-                    tag: 'product_${widget.product.name}',
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Image.asset(
-                        widget.product.image,
-                        height: 220,
-                        fit: BoxFit.contain,
-                      ),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Image.asset(
+                      widget.product.image,
+                      height: 220,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
-
-                // Wishlist Heart on Image
                 Positioned(
                   top: 10,
                   right: 30,
                   child: GestureDetector(
                     onTap: () {
                       setState(() {
-                        Wishlist.toggleWishlist(widget.product);
-                        if (widget.onWishlistChanged != null) {
-                          widget.onWishlistChanged!();
-                        }
+                        wishlistService.toggleWishlist(widget.product);
                       });
                     },
                     child: Container(
@@ -118,10 +94,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         ],
                       ),
                       child: Icon(
-                        Wishlist.contains(widget.product)
+                        wishlistService.contains(widget.product)
                             ? Icons.favorite
                             : Icons.favorite_border,
-                        color: Wishlist.contains(widget.product)
+                        color: wishlistService.contains(widget.product)
                             ? Colors.red
                             : Colors.grey,
                         size: 28,
@@ -131,9 +107,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
               ],
             ),
-
             const SizedBox(height: 20),
-
             Text(
               widget.product.name,
               style: const TextStyle(
@@ -141,28 +115,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 8),
-
             Text(
               widget.product.price,
               style: const TextStyle(
                 fontSize: 20,
-                color: Color(0xFF5B5FDC),
+                color: AppConstants.primaryColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 15),
-
             Text(
               widget.product.description,
               style: const TextStyle(color: Colors.grey),
             ),
-
             const SizedBox(height: 25),
-
-            /// Quantity Selector
             Row(
               children: [
                 const Text(
@@ -170,7 +137,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(width: 10),
-                _qtyButton(Icons.remove, () {
+                _buildQuantityButton(Icons.remove, () {
                   if (quantity > 1) {
                     setState(() => quantity--);
                   }
@@ -183,26 +150,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
-                _qtyButton(Icons.add, () {
+                _buildQuantityButton(Icons.add, () {
                   setState(() => quantity++);
                 }),
               ],
             ),
-
             const Spacer(),
-
-            /// Buttons
             Row(
               children: [
-                // Add to Wishlist Button
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () {
-                      Wishlist.toggleWishlist(widget.product);
-                      if (widget.onWishlistChanged != null) {
-                        widget.onWishlistChanged!();
-                      }
-
+                      wishlistService.toggleWishlist(widget.product);
                       setState(() {});
                     },
                     style: OutlinedButton.styleFrom(
@@ -213,21 +172,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Wishlist.contains(widget.product)
+                          wishlistService.contains(widget.product)
                               ? Icons.favorite
                               : Icons.favorite_border,
-                          color: Wishlist.contains(widget.product)
+                          color: wishlistService.contains(widget.product)
                               ? Colors.red
                               : const Color(0xFF5B5FDC),
                           size: 20,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          Wishlist.contains(widget.product)
+                          wishlistService.contains(widget.product)
                               ? "Wishlisted"
                               : "Wishlist",
                           style: TextStyle(
-                            color: Wishlist.contains(widget.product)
+                            color: wishlistService.contains(widget.product)
                                 ? Colors.red
                                 : const Color(0xFF5B5FDC),
                           ),
@@ -236,17 +195,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 12),
-
-                // Add to Cart Button
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      _addToCartWithQuantity();
-                    },
+                    onPressed: _addToCartWithQuantity,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5B5FDC),
+                      backgroundColor: AppConstants.primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: const Text(
@@ -263,30 +217,22 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Widget _qtyButton(IconData icon, VoidCallback onTap) {
+  Widget _buildQuantityButton(IconData icon, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFF5B5FDC)),
+        border: Border.all(color: AppConstants.primaryColor),
         borderRadius: BorderRadius.circular(8),
-        color: const Color(0xFF5B5FDC).withOpacity(0.1),
+        color: AppConstants.primaryColor.withOpacity(0.1),
       ),
       child: IconButton(
-        icon: Icon(icon, color: const Color(0xFF5B5FDC)),
+        icon: Icon(icon, color: AppConstants.primaryColor),
         onPressed: onTap,
       ),
     );
   }
 
   void _addToCartWithQuantity() {
-    final existingItemIndex = Cart.items.indexWhere(
-      (item) => item.product.name == widget.product.name,
-    );
-
-    if (existingItemIndex >= 0) {
-      Cart.items[existingItemIndex].quantity += quantity;
-    } else {
-      Cart.items.add(CartItem(product: widget.product, quantity: quantity));
-    }
+    cartService.addToCart(widget.product, quantity: quantity);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

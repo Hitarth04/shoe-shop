@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
-import 'cart_model.dart';
-import 'order_model.dart';
-import 'address_selection_sheet.dart';
+import '../models/address_model.dart';
+import '../services/cart_service.dart';
+import '../widgets/address_selection_sheet.dart';
+import '../utils/constants.dart';
+import '../utils/validators.dart';
+import 'address_screen.dart';
+import '../services/address_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final VoidCallback? onPaymentComplete;
@@ -9,12 +13,13 @@ class CheckoutScreen extends StatefulWidget {
   final List<Address> addresses;
   final Function(Address) onAddressChanged;
 
-  const CheckoutScreen(
-      {super.key,
-      this.onPaymentComplete,
-      this.selectedAddress,
-      required this.addresses,
-      required this.onAddressChanged});
+  const CheckoutScreen({
+    super.key,
+    this.onPaymentComplete,
+    this.selectedAddress,
+    required this.addresses,
+    required this.onAddressChanged,
+  });
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -22,34 +27,23 @@ class CheckoutScreen extends StatefulWidget {
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
-  double _discountAmount = 0.0;
-  String? _appliedCoupon;
-  String _selectedPaymentMethod = 'credit_card';
+  final CartService cartService = CartService();
+  List<Address> _addresses = [];
+  final AddressService _addressService = AddressService();
 
-  // Available coupons
-  final Map<String, double> _availableCoupons = {
-    'SAVE10': 0.10, // 10% discount
-    'SAVE20': 0.20, // 20% discount
-    'WELCOME50': 50.0, // ₹50 flat discount
-    'FREESHIP': 30.0, // Free shipping (₹30)
-  };
+  String _selectedPaymentMethod = 'credit_card';
+  String? _appliedCoupon;
+  double _discountAmount = 0.0;
 
   @override
   void initState() {
     super.initState();
-    // Initialize discount to 0
-    _discountAmount = 0.0;
+    cartService.initialize();
+    _loadAddresses();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Get all amounts from Cart model for consistency
-    final subtotal = Cart.totalPrice;
-    final shipping = Cart.shippingAmount;
-    final tax = Cart.taxAmount;
-    final discount = _discountAmount > 0 ? _discountAmount : 0.0;
-    final total = Cart.finalTotal;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -64,29 +58,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Address Section - ADD THIS FIRST
             if (widget.selectedAddress != null) _buildAddressSection(),
-
             const SizedBox(height: 20),
-
-            // Order Summary Section
             _buildOrderSummary(),
-
             const SizedBox(height: 30),
-
-            // Coupon Section
             _buildCouponSection(),
-
             const SizedBox(height: 30),
-
-            // Payment Method Section
             _buildPaymentMethodSection(),
-
             const SizedBox(height: 40),
-
-            // Proceed to Payment Button
             _buildProceedButton(),
-
             const SizedBox(height: 20),
           ],
         ),
@@ -94,231 +74,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildOrderSummary() {
-    // Get all amounts from Cart model
-    final subtotal = Cart.totalPrice;
-    final shipping = Cart.shippingAmount;
-    final tax = Cart.taxAmount;
-    final discount = _discountAmount > 0 ? _discountAmount : 0.0;
-    final total = Cart.finalTotal;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Order Summary",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Subtotal
-            _buildSummaryRow("Subtotal", "₹${subtotal.toStringAsFixed(2)}"),
-
-            // Shipping
-            _buildSummaryRow("Shipping", "₹${shipping.toStringAsFixed(2)}"),
-
-            // Tax
-            _buildSummaryRow("Tax (18%)", "₹${tax.toStringAsFixed(2)}"),
-
-            // Discount
-            if (discount > 0)
-              _buildSummaryRow(
-                "Discount",
-                "-₹${discount.toStringAsFixed(2)}",
-                isDiscount: true,
-              ),
-
-            const Divider(height: 30),
-
-            // Total
-            _buildSummaryRow(
-              "Total",
-              "₹${total.toStringAsFixed(2)}",
-              isTotal: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSummaryRow(String label, String value,
-      {bool isDiscount = false, bool isTotal = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? 18 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isDiscount ? Colors.green : Colors.black,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isTotal ? 20 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isDiscount
-                  ? Colors.green
-                  : isTotal
-                      ? const Color(0xFF5B5FDC)
-                      : Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCouponSection() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Apply Coupon",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            // Applied coupon display
-            if (_appliedCoupon != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.discount, color: Colors.green),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Coupon Applied: $_appliedCoupon",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          Text(
-                            "You saved ₹${_discountAmount.toStringAsFixed(2)}",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.green,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: _removeCoupon,
-                    ),
-                  ],
-                ),
-              ),
-
-            if (_appliedCoupon == null) ...[
-              // Coupon input field
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _couponController,
-                      decoration: InputDecoration(
-                        hintText: "Enter coupon code",
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton(
-                    onPressed: _applyCoupon,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5B5FDC),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Apply",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-
-              // Available coupons
-              const Text(
-                "Available coupons:",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 5),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _availableCoupons.entries.map((entry) {
-                  return Chip(
-                    label: Text(entry.key),
-                    backgroundColor: Colors.grey.shade100,
-                    onDeleted: () {
-                      _couponController.text = entry.key;
-                    },
-                    deleteIcon: const Icon(Icons.content_copy, size: 16),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // In the build method, add address selection section
   Widget _buildAddressSection() {
     return Card(
       child: Padding(
@@ -352,13 +107,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF5B5FDC).withOpacity(0.1),
+                          color: AppConstants.primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           widget.selectedAddress!.tag,
                           style: const TextStyle(
-                            color: Color(0xFF5B5FDC),
+                            color: AppConstants.primaryColor,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
@@ -402,17 +157,204 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  void _changeAddress() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => AddressSelectionSheet(
-        addresses: widget.addresses,
-        selectedAddress: widget.selectedAddress,
-        onAddressSelected: (address) {
-          widget.onAddressChanged(address);
-          Navigator.pop(context);
-          setState(() {});
-        },
+  Widget _buildOrderSummary() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Order Summary",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildSummaryRow(
+                "Subtotal", "₹${cartService.totalPrice.toStringAsFixed(2)}"),
+            _buildSummaryRow("Shipping",
+                "₹${cartService.shippingAmount.toStringAsFixed(2)}"),
+            _buildSummaryRow(
+                "Tax (18%)", "₹${cartService.taxAmount.toStringAsFixed(2)}"),
+            if (_discountAmount > 0)
+              _buildSummaryRow(
+                "Discount",
+                "-₹${_discountAmount.toStringAsFixed(2)}",
+                isDiscount: true,
+              ),
+            const Divider(height: 30),
+            _buildSummaryRow(
+              "Total",
+              "₹${cartService.finalTotal.toStringAsFixed(2)}",
+              isTotal: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value,
+      {bool isDiscount = false, bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: isTotal ? 18 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: isDiscount ? Colors.green : Colors.black,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isTotal ? 20 : 16,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+              color: isDiscount
+                  ? Colors.green
+                  : isTotal
+                      ? AppConstants.primaryColor
+                      : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCouponSection() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Apply Coupon",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 15),
+            if (_appliedCoupon != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.discount, color: Colors.green),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Coupon Applied: $_appliedCoupon",
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          Text(
+                            "You saved ₹${_discountAmount.toStringAsFixed(2)}",
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: _removeCoupon,
+                    ),
+                  ],
+                ),
+              ),
+            if (_appliedCoupon == null) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _couponController,
+                      decoration: InputDecoration(
+                        hintText: "Enter coupon code",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: _applyCoupon,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      "Apply",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Available coupons:",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: AppConstants.availableCoupons.entries.map((entry) {
+                  return Chip(
+                    label: Text(entry.key),
+                    backgroundColor: Colors.grey.shade100,
+                    onDeleted: () {
+                      _couponController.text = entry.key;
+                    },
+                    deleteIcon: const Icon(Icons.content_copy, size: 16),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -436,38 +378,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             ),
             const SizedBox(height: 15),
-
-            // Credit/Debit Card
             _buildPaymentOption(
               value: 'credit_card',
               icon: Icons.credit_card,
               title: "Credit/Debit Card",
               subtitle: "Pay with your card",
             ),
-
             const SizedBox(height: 10),
-
-            // UPI
             _buildPaymentOption(
               value: 'upi',
               icon: Icons.phone_android,
               title: "UPI",
               subtitle: "Google Pay, PhonePe, Paytm",
             ),
-
             const SizedBox(height: 10),
-
-            // Cash on Delivery
             _buildPaymentOption(
               value: 'cod',
               icon: Icons.money,
               title: "Cash on Delivery",
               subtitle: "Pay when you receive",
             ),
-
             const SizedBox(height: 10),
-
-            // Net Banking
             _buildPaymentOption(
               value: 'net_banking',
               icon: Icons.account_balance,
@@ -496,12 +427,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: _selectedPaymentMethod == value
-              ? const Color(0xFF5B5FDC).withOpacity(0.1)
+              ? AppConstants.primaryColor.withOpacity(0.1)
               : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: _selectedPaymentMethod == value
-                ? const Color(0xFF5B5FDC)
+                ? AppConstants.primaryColor
                 : Colors.transparent,
             width: 2,
           ),
@@ -512,7 +443,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: _selectedPaymentMethod == value
-                    ? const Color(0xFF5B5FDC)
+                    ? AppConstants.primaryColor
                     : Colors.grey.shade300,
                 shape: BoxShape.circle,
               ),
@@ -554,7 +485,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   _selectedPaymentMethod = value!;
                 });
               },
-              activeColor: const Color(0xFF5B5FDC),
+              activeColor: AppConstants.primaryColor,
             ),
           ],
         ),
@@ -563,18 +494,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildProceedButton() {
-    // Get the final total from Cart
-    final total = Cart.finalTotal;
-
     return SizedBox(
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: () {
-          _processPayment();
-        },
+        onPressed: _processPayment,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF5B5FDC),
+          backgroundColor: AppConstants.primaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -593,7 +519,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
             const SizedBox(width: 10),
             Text(
-              "₹${total.toStringAsFixed(2)}",
+              "₹${cartService.finalTotal.toStringAsFixed(2)}",
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -606,32 +532,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  void _changeAddress() async {
+    final result = await showModalBottomSheet<Address>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => AddressSelectionSheet(
+        addresses: widget.addresses,
+        selectedAddress: widget.selectedAddress,
+        onAddressSelected: (address) {
+          // This will be called when an address is selected
+          widget.onAddressChanged(address);
+        },
+        onAddNewAddressPressed: () async {
+          // Navigate to AddressScreen for adding new address
+          final newAddress = await Navigator.push<Address>(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddressScreen(fromCheckout: true),
+            ),
+          );
+
+          if (newAddress != null) {
+            // Update the address in parent widget
+            widget.onAddressChanged(newAddress);
+            // You might need to refresh addresses here
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _loadAddresses() async {
+    final loadedAddresses = await _addressService.getAddresses();
+    setState(() {
+      _addresses = loadedAddresses;
+    });
+  }
+
   void _applyCoupon() {
     final couponCode = _couponController.text.trim().toUpperCase();
 
-    if (couponCode.isEmpty) {
-      _showError("Please enter a coupon code");
+    final error =
+        Validators.validateCoupon(couponCode, AppConstants.availableCoupons);
+    if (error != null) {
+      _showError(error);
       return;
     }
 
-    if (!_availableCoupons.containsKey(couponCode)) {
-      _showError("Invalid coupon code");
-      return;
-    }
-
-    final discount = _availableCoupons[couponCode]!;
+    final discount = AppConstants.availableCoupons[couponCode]!;
     double discountAmount = 0.0;
 
     if (discount <= 1.0) {
-      // Percentage discount
-      discountAmount = Cart.totalPrice * discount;
+      discountAmount = cartService.totalPrice * discount;
     } else {
-      // Fixed amount discount
       discountAmount = discount;
     }
 
-    // Apply maximum discount of 90% of order total
-    final maxDiscount = Cart.totalPrice * 0.9;
+    final maxDiscount = cartService.totalPrice * 0.9;
     if (discountAmount > maxDiscount) {
       discountAmount = maxDiscount;
     }
@@ -640,9 +597,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       _appliedCoupon = couponCode;
       _discountAmount = discountAmount;
       _couponController.clear();
-
-      // Also update the Cart class
-      Cart.applyDiscount(discountAmount, couponCode);
+      cartService.applyDiscount(discountAmount, couponCode);
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -658,9 +613,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     setState(() {
       _appliedCoupon = null;
       _discountAmount = 0.0;
-
-      // Also update the Cart class
-      Cart.removeDiscount();
+      cartService.removeDiscount();
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -681,15 +634,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _processPayment() async {
-    // Get the final total from Cart
-    final total = Cart.finalTotal;
-
-    if (Cart.items.isEmpty) {
+    if (cartService.items.isEmpty) {
       _showError("Your cart is empty");
       return;
     }
 
-    // Show processing dialog
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -702,7 +651,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const Text("Processing payment..."),
             const SizedBox(height: 8),
             Text(
-              "₹${total.toStringAsFixed(2)}",
+              "₹${cartService.finalTotal.toStringAsFixed(2)}",
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -713,20 +662,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       ),
     );
 
-    // Simulate payment processing
     await Future.delayed(const Duration(seconds: 2));
 
-    // Close dialog
     if (mounted) {
       Navigator.of(context, rootNavigator: true).pop();
     }
 
-    // Call the callback if it still exists
     if (widget.onPaymentComplete != null) {
       widget.onPaymentComplete!();
     }
 
-    // Show success with option to continue
     final shouldContinue = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -737,8 +682,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 const Icon(Icons.check_circle, color: Colors.green, size: 60),
                 const SizedBox(height: 20),
                 Text(
-                  "Order Total: ₹${total.toStringAsFixed(2)}\n"
-                  "Items: ${Cart.itemCount}",
+                  "Order Total: ₹${cartService.finalTotal.toStringAsFixed(2)}\n"
+                  "Items: ${cartService.itemCount}",
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
@@ -756,7 +701,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ElevatedButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF5B5FDC),
+                  backgroundColor: AppConstants.primaryColor,
                   minimumSize: const Size(120, 45),
                 ),
                 child: const Text(
@@ -770,7 +715,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         true;
 
     if (shouldContinue && mounted) {
-      Navigator.pop(context); // Pop back to CartScreen
+      Navigator.pop(context);
     }
   }
 

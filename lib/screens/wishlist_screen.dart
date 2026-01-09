@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'product_model.dart';
-import 'wishlist_model.dart';
+import '../models/product_model.dart';
+import '../services/wishlist_service.dart';
+import '../services/cart_service.dart';
+import '../widgets/product_card.dart';
 import 'product_details_screen.dart';
-import 'cart_model.dart';
-import 'product_manager.dart';
+import '../utils/constants.dart';
 
 class WishlistScreen extends StatefulWidget {
   final VoidCallback? onWishlistUpdated;
@@ -22,15 +23,18 @@ class WishlistScreen extends StatefulWidget {
 }
 
 class _WishlistScreenState extends State<WishlistScreen> {
+  final WishlistService wishlistService = WishlistService();
+  final CartService cartService = CartService();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFFFF),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("My Wishlist"),
         centerTitle: true,
         actions: [
-          if (Wishlist.items.isNotEmpty)
+          if (wishlistService.items.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep),
               onPressed: _showClearWishlistDialog,
@@ -38,7 +42,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             ),
         ],
       ),
-      body: Wishlist.items.isEmpty
+      body: wishlistService.items.isEmpty
           ? _buildEmptyWishlist()
           : _buildWishlistItems(),
     );
@@ -71,7 +75,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ElevatedButton(
             onPressed: _navigateToHomeTab,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5B5FDC),
+              backgroundColor: AppConstants.primaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
             child: const Text(
@@ -87,7 +91,6 @@ class _WishlistScreenState extends State<WishlistScreen> {
   Widget _buildWishlistItems() {
     return Column(
       children: [
-        // Wishlist Count
         Container(
           padding: const EdgeInsets.all(16),
           color: Colors.grey.shade50,
@@ -95,7 +98,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "${Wishlist.count} items",
+                "${wishlistService.count} items",
                 style: const TextStyle(
                   fontWeight: FontWeight.w500,
                   color: Colors.grey,
@@ -114,14 +117,12 @@ class _WishlistScreenState extends State<WishlistScreen> {
             ],
           ),
         ),
-
-        // Wishlist Items List
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: Wishlist.items.length,
+            itemCount: wishlistService.items.length,
             itemBuilder: (context, index) {
-              final product = Wishlist.items[index];
+              final product = wishlistService.items[index];
               return _buildWishlistItem(product);
             },
           ),
@@ -138,15 +139,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ProductDetailsScreen(
-                product: ProductManager.getProductByName(product.name),
-                onWishlistChanged: () {
-                  setState(() {});
-                  if (widget.onWishlistUpdated != null) {
-                    widget.onWishlistUpdated!();
-                  }
-                },
-              ),
+              builder: (_) => ProductDetailsScreen(product: product),
             ),
           );
         },
@@ -173,7 +166,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             Text(
               product.price,
               style: const TextStyle(
-                color: Color(0xFF5B5FDC),
+                color: AppConstants.primaryColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -182,25 +175,22 @@ class _WishlistScreenState extends State<WishlistScreen> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Add to Cart Button
             IconButton(
               icon: const Icon(Icons.add_shopping_cart, size: 20),
-              color: const Color(0xFF5B5FDC),
-              onPressed: () {
-                Cart.addToCart(product);
+              color: AppConstants.primaryColor,
+              onPressed: () async {
+                await cartService.addToCart(product);
                 if (widget.onCartUpdated != null) {
                   widget.onCartUpdated!();
                 }
               },
             ),
-
-            // Remove from Wishlist Button
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
               color: Colors.red,
               onPressed: () {
                 setState(() {
-                  Wishlist.removeFromWishlist(product);
+                  wishlistService.removeFromWishlist(product);
                   if (widget.onWishlistUpdated != null) {
                     widget.onWishlistUpdated!();
                   }
@@ -228,7 +218,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                Wishlist.clear();
+                wishlistService.clear();
                 if (widget.onWishlistUpdated != null) {
                   widget.onWishlistUpdated!();
                 }
@@ -243,13 +233,11 @@ class _WishlistScreenState extends State<WishlistScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5B5FDC),
+              backgroundColor: AppConstants.primaryColor,
             ),
             child: const Text(
               "Clear All",
-              style: TextStyle(
-                color: Colors.white,
-              ),
+              style: TextStyle(color: Colors.white),
             ),
           ),
         ],

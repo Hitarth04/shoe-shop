@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'main_nav_screen.dart';
-import 'signup_screen.dart'; // Already imported
+import '../main_nav_screen.dart';
+import 'signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,7 +26,6 @@ class _LoginScreenState extends State<LoginScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            // Navigate back to WelcomeScreen
             Navigator.pop(context);
           },
         ),
@@ -64,10 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 200,
                       ),
                     ),
-
                     const SizedBox(height: 20.0),
-
-                    // Animated title
                     TweenAnimationBuilder(
                       duration: const Duration(milliseconds: 600),
                       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -88,14 +84,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 30),
-
-                    /// Email
-                    _inputField(
+                    _buildInputField(
                       label: "Email",
                       icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
                       controller: emailController,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -109,16 +101,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
-
-                    /// Password
-                    _inputField(
+                    _buildInputField(
                       label: "Password",
                       icon: Icons.lock_outline,
                       isPassword: true,
                       obscureText: _obscurePassword,
-                      keyboardType: TextInputType.visiblePassword,
                       controller: passwordController,
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -143,10 +131,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 10),
-
-                    /// Forgot Password
                     Align(
                       alignment: Alignment.topLeft,
                       child: TextButton(
@@ -159,10 +144,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    /// Login Button
                     Align(
                       alignment: Alignment.centerRight,
                       child: SizedBox(
@@ -191,10 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Sign up link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -228,21 +207,18 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Reusable input field
-  Widget _inputField({
+  Widget _buildInputField({
     required String label,
     required IconData icon,
     bool isPassword = false,
     bool obscureText = false,
-    required TextInputType keyboardType,
-    TextEditingController? controller,
-    String? Function(String?)? validator,
+    required TextEditingController controller,
+    required String? Function(String?)? validator,
     Widget? suffixIcon,
   }) {
     return TextFormField(
       obscureText: isPassword && obscureText,
       controller: controller,
-      keyboardType: keyboardType,
       validator: validator,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: const Color(0xFF5B5FDC)),
@@ -266,10 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
-
-    // Validate form
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -278,20 +251,17 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate API call delay
     await Future.delayed(const Duration(seconds: 1));
 
     setState(() {
       _isLoading = false;
     });
 
-    // Extract first name from email for demo
     final email = emailController.text.trim();
     final userName = email.split('@').first;
     final capitalizedUserName =
         userName[0].toUpperCase() + userName.substring(1).toLowerCase();
 
-    // Navigate to main app
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

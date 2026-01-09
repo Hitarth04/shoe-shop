@@ -3,10 +3,11 @@ import 'package:google_nav_bar/google_nav_bar.dart';
 import 'home_screen.dart';
 import 'cart_screen.dart';
 import 'wishlist_screen.dart';
-import 'cart_model.dart';
-import 'wishlist_model.dart';
 import 'profile_screen.dart';
-import 'login_screen.dart';
+import 'auth/login_screen.dart';
+import '../services/cart_service.dart';
+import '../services/wishlist_service.dart';
+import '../utils/constants.dart';
 
 class MainNavScreen extends StatefulWidget {
   final String userName;
@@ -21,14 +22,15 @@ class _MainNavScreenState extends State<MainNavScreen> {
   int currentIndex = 0;
   DateTime? currentBackPressTime;
   int _cartItemCount = 0;
-  int _wishlistCount = 0; // Add wishlist counter
+  int _wishlistCount = 0;
+
+  final CartService cartService = CartService();
+  final WishlistService wishlistService = WishlistService();
 
   @override
   void initState() {
     super.initState();
-    _initializeCart();
-    _updateCartCount();
-    _updateWishlistCount(); // Initialize wishlist count
+    _initializeData();
   }
 
   void _switchToHomeTab() {
@@ -37,13 +39,14 @@ class _MainNavScreenState extends State<MainNavScreen> {
     });
   }
 
-  Future<void> _initializeCart() async {
-    await Cart.initialize();
+  Future<void> _initializeData() async {
+    await cartService.initialize();
     _updateCartCount();
+    _updateWishlistCount();
   }
 
   void _updateCartCount() {
-    final newCount = Cart.items.fold(0, (sum, item) => sum + item.quantity);
+    final newCount = cartService.itemCount;
     if (newCount != _cartItemCount) {
       setState(() {
         _cartItemCount = newCount;
@@ -52,7 +55,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
   }
 
   void _updateWishlistCount() {
-    final newCount = Wishlist.count;
+    final newCount = wishlistService.count;
     if (newCount != _wishlistCount) {
       setState(() {
         _wishlistCount = newCount;
@@ -66,10 +69,9 @@ class _MainNavScreenState extends State<MainNavScreen> {
       HomeScreen(
         userName: widget.userName,
         onCartUpdated: _updateCartCount,
-        onWishlistUpdated: _updateWishlistCount, // Add this
+        onWishlistUpdated: _updateWishlistCount,
       ),
       WishlistScreen(
-        // Add wishlist screen
         onWishlistUpdated: _updateWishlistCount,
         onCartUpdated: _updateCartCount,
         onBrowseProducts: _switchToHomeTab,
@@ -81,7 +83,6 @@ class _MainNavScreenState extends State<MainNavScreen> {
       ProfileScreen(
         userName: widget.userName,
         onLogout: () {
-          // Handle logout - navigate to login screen
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -120,14 +121,14 @@ class _MainNavScreenState extends State<MainNavScreen> {
             tabMargin: const EdgeInsets.symmetric(horizontal: 8),
             tabBorderRadius: 12,
             backgroundColor: Colors.white,
-            rippleColor: const Color(0xFF5B5FDC).withOpacity(0.2),
-            hoverColor: const Color(0xFF5B5FDC).withOpacity(0.1),
+            rippleColor: AppConstants.primaryColor.withOpacity(0.2),
+            hoverColor: AppConstants.primaryColor.withOpacity(0.1),
             gap: 8,
             activeColor: Colors.white,
             iconSize: 24,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             duration: const Duration(milliseconds: 400),
-            tabBackgroundColor: const Color(0xFF5B5FDC),
+            tabBackgroundColor: AppConstants.primaryColor,
             color: Colors.grey[700],
             tabs: [
               const GButton(
@@ -147,11 +148,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
                   fontWeight: FontWeight.w500,
                   color: Color(0xFFFFFFFF),
                 ),
-                iconActiveColor: const Color(0xFFFFFFFF),
                 leading: Stack(
                   children: [
                     Icon(
-                      currentIndex == 1 ? Icons.favorite : Icons.favorite,
+                      Icons.favorite,
                       color:
                           currentIndex == 1 ? Colors.white : Colors.grey[700],
                     ),
@@ -196,9 +196,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
                 leading: Stack(
                   children: [
                     Icon(
-                      currentIndex == 2
-                          ? Icons.shopping_cart
-                          : Icons.shopping_cart,
+                      Icons.shopping_cart,
                       color:
                           currentIndex == 2 ? Colors.white : Colors.grey[700],
                     ),
@@ -246,7 +244,6 @@ class _MainNavScreenState extends State<MainNavScreen> {
             onTabChange: (index) {
               setState(() {
                 currentIndex = index;
-                // Update counts when switching tabs
                 if (index == 1) _updateWishlistCount();
                 if (index == 2) _updateCartCount();
               });

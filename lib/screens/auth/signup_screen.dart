@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
-import 'main_nav_screen.dart';
+import '../main_nav_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -32,7 +32,6 @@ class _SignupScreenState extends State<SignupScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            // Navigate back to WelcomeScreen
             Navigator.pop(context);
           },
         ),
@@ -51,7 +50,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    // Animated image
                     TweenAnimationBuilder(
                       duration: const Duration(milliseconds: 800),
                       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -69,10 +67,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         height: 170,
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
-                    // Animated title
                     TweenAnimationBuilder(
                       duration: const Duration(milliseconds: 600),
                       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -93,14 +88,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 30),
-
-                    /// Name
-                    _inputField(
+                    _buildInputField(
                       label: "Full Name",
                       icon: Icons.person_outline,
-                      keyboardType: TextInputType.name,
                       controller: nameController,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -112,14 +103,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
-
-                    /// Email
-                    _inputField(
+                    _buildInputField(
                       label: "Email",
                       icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
                       controller: emailController,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -133,23 +120,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
-
-                    /// Password
-                    _inputField(
+                    _buildInputField(
                       label: "Password",
                       icon: Icons.lock_outline,
                       isPassword: true,
                       obscureText: _obscurePassword,
-                      keyboardType: TextInputType.visiblePassword,
                       controller: passwordController,
-                      onChanged: (value) {
-                        // Trigger re-validation of confirm password when password changes
-                        if (confirmPasswordController.text.isNotEmpty) {
-                          _formKey.currentState?.validate();
-                        }
-                      },
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword
@@ -173,16 +150,12 @@ class _SignupScreenState extends State<SignupScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 15),
-
-                    /// Confirm Password
-                    _inputField(
+                    _buildInputField(
                       label: "Confirm Password",
                       icon: Icons.lock_outline,
                       isPassword: true,
                       obscureText: _obscureConfirmPassword,
-                      keyboardType: TextInputType.visiblePassword,
                       controller: confirmPasswordController,
                       suffixIcon: IconButton(
                         icon: Icon(
@@ -207,21 +180,10 @@ class _SignupScreenState extends State<SignupScreen> {
                         return null;
                       },
                     ),
-
-                    // Password strength indicator (optional)
-                    if (passwordController.text.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8, left: 12),
-                        child: _buildPasswordStrength(),
-                      ),
-
                     const SizedBox(height: 15),
-
-                    /// Phone Number
-                    _inputField(
+                    _buildInputField(
                       label: "Phone Number",
                       icon: Icons.phone,
-                      keyboardType: TextInputType.phone,
                       controller: phoneController,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -234,10 +196,7 @@ class _SignupScreenState extends State<SignupScreen> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 30),
-
-                    /// Signup Button (bottom-right)
                     Align(
                       alignment: Alignment.centerRight,
                       child: SizedBox(
@@ -264,10 +223,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                       ),
                     ),
-
                     const SizedBox(height: 10),
-
-                    /// Already have account
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -301,24 +257,19 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// Reusable Input Field with validator
-  Widget _inputField({
+  Widget _buildInputField({
     required String label,
     required IconData icon,
     bool isPassword = false,
     bool obscureText = false,
-    required TextInputType keyboardType,
-    TextEditingController? controller,
-    String? Function(String?)? validator,
+    required TextEditingController controller,
+    required String? Function(String?)? validator,
     Widget? suffixIcon,
-    void Function(String)? onChanged,
   }) {
     return TextFormField(
       obscureText: isPassword && obscureText,
       controller: controller,
-      keyboardType: keyboardType,
       validator: validator,
-      onChanged: onChanged,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: const Color(0xFF5B5FDC)),
         suffixIcon: suffixIcon,
@@ -336,22 +287,12 @@ class _SignupScreenState extends State<SignupScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.grey),
         ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
       ),
     );
   }
 
   void _handleSignup() async {
-    // Hide keyboard
     FocusScope.of(context).unfocus();
-
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -360,14 +301,12 @@ class _SignupScreenState extends State<SignupScreen> {
       _isLoading = true;
     });
 
-    // Simulate API call delay
     await Future.delayed(const Duration(seconds: 1));
 
     setState(() {
       _isLoading = false;
     });
 
-    // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -396,59 +335,6 @@ class _SignupScreenState extends State<SignupScreen> {
           userName: capitalizedFirstName,
         ),
       ),
-    );
-  }
-
-  /// Password strength indicator (optional feature)
-  Widget _buildPasswordStrength() {
-    final password = passwordController.text;
-    int strength = 0;
-
-    if (password.length >= 6) strength++;
-    if (password.contains(RegExp(r'[A-Z]'))) strength++;
-    if (password.contains(RegExp(r'[a-z]'))) strength++;
-    if (password.contains(RegExp(r'[0-9]'))) strength++;
-    if (password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) strength++;
-
-    String strengthText;
-    Color strengthColor;
-
-    switch (strength) {
-      case 0:
-      case 1:
-        strengthText = "Weak";
-        strengthColor = Colors.red;
-        break;
-      case 2:
-      case 3:
-        strengthText = "Medium";
-        strengthColor = Colors.orange;
-        break;
-      case 4:
-      case 5:
-        strengthText = "Strong";
-        strengthColor = Colors.green;
-        break;
-      default:
-        strengthText = "Weak";
-        strengthColor = Colors.red;
-    }
-
-    return Row(
-      children: [
-        Text(
-          "Strength: ",
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
-        Text(
-          strengthText,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: strengthColor,
-          ),
-        ),
-      ],
     );
   }
 }

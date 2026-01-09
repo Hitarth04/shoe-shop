@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'cart_model.dart';
+import '../models/product_model.dart';
+import '../models/address_model.dart';
+import '../models/order_model.dart';
+import '../services/cart_service.dart';
+import '../services/order_service.dart';
+import '../services/address_service.dart';
 import 'checkout_screen.dart';
-import 'order_model.dart';
 import 'address_screen.dart';
-import 'product_model.dart';
+import '../utils/extensions.dart';
+import '../utils/constants.dart';
+import '../models/cart_model.dart';
 
 class CartScreen extends StatefulWidget {
   final VoidCallback? onContinueShopping;
@@ -20,10 +26,14 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
+  final CartService cartService = CartService();
+  final OrderService orderService = OrderService();
+  final AddressService addressService = AddressService();
+
   @override
   void initState() {
     super.initState();
-    // You could add a listener here if needed
+    cartService.initialize();
   }
 
   void refreshCart() {
@@ -34,27 +44,15 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.onCartUpdated != null) {
-        widget.onCartUpdated!();
-      }
-    });
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("My Cart"),
         automaticallyImplyLeading: false,
       ),
-      body: Cart.items.isEmpty ? _buildEmptyCart() : _buildCartWithItems(),
+      body:
+          cartService.items.isEmpty ? _buildEmptyCart() : _buildCartWithItems(),
     );
-  }
-
-  // In all cart modification methods, call the callback:
-  void _modifyCart() {
-    if (widget.onCartUpdated != null) {
-      widget.onCartUpdated!();
-    }
   }
 
   Widget _buildEmptyCart() {
@@ -82,9 +80,9 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(height: 30),
           ElevatedButton(
-            onPressed: _navigateToHomeTab,
+            onPressed: widget.onContinueShopping ?? () {},
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5B5FDC),
+              backgroundColor: AppConstants.primaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
             child: const Text(
@@ -104,22 +102,22 @@ class _CartScreenState extends State<CartScreen> {
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: Cart.items.length,
+            itemCount: cartService.items.length,
             itemBuilder: (context, index) {
-              final item = Cart.items[index];
+              final item = cartService.items[index];
               return _buildCartItem(item);
             },
           ),
         ),
 
-        // Checkout Button (instead of summary)
-        _buildCheckoutButton(),
+        // Checkout Section
+        _buildCheckoutSection(),
       ],
     );
   }
 
   Widget _buildCartItem(CartItem item) {
-    final price = _parsePrice(item.product.price);
+    final price = item.product.price.toDouble();
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -139,7 +137,7 @@ class _CartScreenState extends State<CartScreen> {
               "Total: ₹${(price * item.quantity).toStringAsFixed(2)}",
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF5B5FDC),
+                color: AppConstants.primaryColor,
               ),
             ),
           ],
@@ -149,16 +147,10 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             IconButton(
               icon: const Icon(Icons.remove, size: 20),
-              onPressed: () {
-                setState(() {
-                  if (item.quantity > 1) {
-                    Cart.decreaseQty(item.product);
-                    _modifyCart();
-                  } else {
-                    Cart.removeItem(item.product);
-                    _modifyCart();
-                  }
-                });
+              onPressed: () async {
+                await cartService.decreaseQuantity(item.product);
+                widget.onCartUpdated?.call();
+                refreshCart();
               },
             ),
             Text(
@@ -170,20 +162,18 @@ class _CartScreenState extends State<CartScreen> {
             ),
             IconButton(
               icon: const Icon(Icons.add, size: 20),
-              onPressed: () {
-                setState(() {
-                  Cart.increaseQty(item.product);
-                  _modifyCart();
-                });
+              onPressed: () async {
+                await cartService.increaseQuantity(item.product);
+                widget.onCartUpdated?.call();
+                refreshCart();
               },
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-              onPressed: () {
-                setState(() {
-                  Cart.removeItem(item.product);
-                  _modifyCart();
-                });
+              onPressed: () async {
+                await cartService.removeItem(item.product);
+                widget.onCartUpdated?.call();
+                refreshCart();
               },
             ),
           ],
@@ -192,7 +182,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCheckoutButton() {
+  Widget _buildCheckoutSection() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -208,7 +198,6 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: Column(
         children: [
-          // Cart Total (simple version)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -220,26 +209,23 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ),
               Text(
-                "₹${(Cart.totalPrice).toStringAsFixed(2)}",
+                "₹${cartService.totalPrice.toStringAsFixed(2)}",
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF5B5FDC),
+                  color: AppConstants.primaryColor,
                 ),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
-
-          // Checkout Button
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
               onPressed: _proceedToCheckout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5B5FDC),
+                backgroundColor: AppConstants.primaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -254,21 +240,18 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
           ),
-
           const SizedBox(height: 10),
-
-          // Continue Shopping Button
           SizedBox(
             width: double.infinity,
             height: 50,
             child: OutlinedButton(
-              onPressed: _navigateToHomeTab,
+              onPressed: widget.onContinueShopping ?? () {},
               style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 side: const BorderSide(
-                  color: Color(0xFF5B5FDC),
+                  color: AppConstants.primaryColor,
                   width: 1.5,
                 ),
               ),
@@ -276,7 +259,7 @@ class _CartScreenState extends State<CartScreen> {
                 "Continue Shopping",
                 style: TextStyle(
                   fontSize: 16,
-                  color: Color(0xFF5B5FDC),
+                  color: AppConstants.primaryColor,
                 ),
               ),
             ),
@@ -286,31 +269,8 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  double _parsePrice(String priceString) {
-    try {
-      final cleanString = priceString.replaceAll(RegExp(r'[^0-9.]'), '');
-      return double.parse(cleanString);
-    } catch (e) {
-      return 0.0;
-    }
-  }
-
-  void _navigateToHomeTab() {
-    if (widget.onContinueShopping != null) {
-      widget.onContinueShopping!();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Switch to Home tab to continue shopping"),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
   void _proceedToCheckout() async {
-    // Check if cart is empty
-    if (Cart.items.isEmpty) {
+    if (cartService.items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Your cart is empty!"),
@@ -320,22 +280,18 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    // Check if user has any saved addresses
-    final addresses = await OrderManager.getAddresses();
+    final addresses = await addressService.getAddresses();
 
     if (addresses.isEmpty) {
-      // Show dialog to add address first
       await _showAddAddressDialog();
       return;
     }
 
-    // Check if there's a default address
     Address selectedAddress = addresses.firstWhere(
       (address) => address.isDefault,
       orElse: () => addresses.first,
     );
 
-    // Navigate to CheckoutScreen with selected address
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -343,23 +299,14 @@ class _CartScreenState extends State<CartScreen> {
           selectedAddress: selectedAddress,
           addresses: addresses,
           onPaymentComplete: () async {
-            // Create an order when payment is complete
             await _createOrder(selectedAddress);
+            await cartService.clearCart();
+            widget.onCartUpdated?.call();
 
-            // Clear the cart after successful order
-            await Cart.clearCart();
-
-            // Update cart count
-            if (widget.onCartUpdated != null) {
-              widget.onCartUpdated!();
-            }
-
-            // Refresh the cart screen
             if (mounted) {
               setState(() {});
             }
 
-            // Show success message
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text("Order placed successfully!"),
@@ -369,7 +316,6 @@ class _CartScreenState extends State<CartScreen> {
             );
           },
           onAddressChanged: (Address newAddress) {
-            // Update address if changed in checkout
             setState(() {
               selectedAddress = newAddress;
             });
@@ -394,31 +340,23 @@ class _CartScreenState extends State<CartScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Close the dialog
-
-              // Navigate to address screen
+              Navigator.pop(context);
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const AddressScreen(
-                    fromCheckout: true,
-                  ),
+                  builder: (context) => const AddressScreen(fromCheckout: true),
                 ),
               );
-
-              // If address was added successfully, proceed to checkout
               if (result == true) {
                 _proceedToCheckout();
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5B5FDC),
+              backgroundColor: AppConstants.primaryColor,
             ),
             child: const Text(
               "Add Address",
-              style: TextStyle(
-                color: Colors.white,
-              ),
+              style: TextStyle(color: Colors.white),
             ),
           ),
         ],
@@ -426,55 +364,23 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // Update _createOrder method to include address
   Future<void> _createOrder(Address shippingAddress) async {
-    // Generate a unique order ID
     final orderId = "ORD${DateTime.now().millisecondsSinceEpoch}";
 
-    // Create a copy of the actual cart items
-    final orderItems = Cart.items
-        .map((cartItem) => CartItem(
-              product: Product(
-                name: cartItem.product.name,
-                image: cartItem.product.image,
-                price: cartItem.product.price,
-                description: cartItem.product.description ?? '',
-                isWishlisted: cartItem.product.isWishlisted,
-              ),
-              quantity: cartItem.quantity,
-            ))
-        .toList();
-
-    // Calculate order amounts PROPERLY
-    final subtotal = Cart.totalPrice;
-    final shipping = Cart.shippingAmount;
-    final tax = Cart.taxAmount;
-    final discount = Cart.discountAmount;
-    final finalTotal = Cart.finalTotal;
-
-    print("=== Order Calculation ===");
-    print("Subtotal: ₹$subtotal");
-    print("Shipping: ₹$shipping");
-    print("Tax (18%): ₹$tax");
-    print("Discount: ₹$discount");
-    print("Final Total: ₹$finalTotal");
-
-    // Create the order with ALL amounts
     final order = Order(
       orderId: orderId,
       orderDate: DateTime.now(),
-      items: orderItems,
-      subtotalAmount: subtotal, // Add subtotal
-      shippingAmount: shipping, // Add shipping
-      taxAmount: tax, // Add tax
-      discountAmount: discount, // Add discount
-      totalAmount: finalTotal, // Use finalTotal which includes everything
+      items: List.from(cartService.items),
+      subtotalAmount: cartService.totalPrice,
+      shippingAmount: cartService.shippingAmount,
+      taxAmount: cartService.taxAmount,
+      discountAmount: cartService.discountAmount,
+      totalAmount: cartService.finalTotal,
       status: 'Processing',
       shippingAddress: shippingAddress,
-      appliedCoupon: Cart.appliedCoupon, // Save the coupon code
+      appliedCoupon: cartService.appliedCoupon,
     );
 
-    // Save the order
-    await OrderManager.saveOrder(order);
+    await orderService.saveOrder(order);
   }
 }
