@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/product_model.dart';
 import '../models/address_model.dart';
 import '../models/order_model.dart';
 import '../services/cart_service.dart';
@@ -15,7 +14,7 @@ class CartScreen extends StatefulWidget {
   final VoidCallback? onContinueShopping;
   final VoidCallback? onCartUpdated;
 
-  const CartScreen({
+  CartScreen({
     super.key,
     this.onContinueShopping,
     this.onCartUpdated,
@@ -280,25 +279,22 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    final addresses = await addressService.getAddresses();
-
-    if (addresses.isEmpty) {
-      await _showAddAddressDialog();
-      return;
-    }
-
-    Address selectedAddress = addresses.firstWhere(
-      (address) => address.isDefault,
-      orElse: () => addresses.first,
-    );
-
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => CheckoutScreen(
-          selectedAddress: selectedAddress,
-          addresses: addresses,
           onPaymentComplete: () async {
+            final addresses = await addressService.getAddresses();
+
+            if (addresses.isEmpty) {
+              return;
+            }
+
+            final selectedAddress = addresses.firstWhere(
+              (a) => a.isDefault,
+              orElse: () => addresses.first,
+            );
+
             await _createOrder(selectedAddress);
             await cartService.clearCart();
             widget.onCartUpdated?.call();
@@ -314,11 +310,6 @@ class _CartScreenState extends State<CartScreen> {
                 duration: Duration(seconds: 3),
               ),
             );
-          },
-          onAddressChanged: (Address newAddress) {
-            setState(() {
-              selectedAddress = newAddress;
-            });
           },
         ),
       ),
@@ -347,7 +338,7 @@ class _CartScreenState extends State<CartScreen> {
                   builder: (context) => const AddressScreen(fromCheckout: true),
                 ),
               );
-              if (result == true) {
+              if (result != true) {
                 _proceedToCheckout();
               }
             },

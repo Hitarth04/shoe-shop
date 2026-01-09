@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import '../models/address_model.dart';
 import '../utils/extensions.dart';
 import '../utils/constants.dart';
+import '../screens/address_screen.dart';
 
 class AddressSelectionSheet extends StatelessWidget {
   final List<Address> addresses;
   final Address? selectedAddress;
   final Function(Address) onAddressSelected;
-  final VoidCallback onAddNewAddressPressed;
 
   const AddressSelectionSheet({
     super.key,
     required this.addresses,
     this.selectedAddress,
     required this.onAddressSelected,
-    required this.onAddNewAddressPressed,
   });
 
   @override
@@ -37,7 +36,8 @@ class AddressSelectionSheet extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     onTap: () {
-                      Navigator.pop(context, address);
+                      onAddressSelected(address); // Call the callback
+                      Navigator.pop(context); // Close the bottom sheet
                     },
                     leading: Container(
                       width: 40,
@@ -98,9 +98,27 @@ class AddressSelectionSheet extends StatelessWidget {
               }).toList(),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the bottom sheet first
-                  onAddNewAddressPressed(); // Then trigger the callback
+                onPressed: () async {
+                  // // Close the bottom sheet first
+                  // Navigator.pop(context);
+
+                  // // Wait a moment for the bottom sheet to close
+                  // await Future.delayed(const Duration(milliseconds: 300));
+
+                  // Navigate to AddressScreen and wait for result
+                  final newAddress = await Navigator.push<Address>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const AddressScreen(fromCheckout: true),
+                    ),
+                  );
+
+                  // If a new address was added, select it
+                  if (newAddress != null && context.mounted) {
+                    onAddressSelected(newAddress);
+                    Navigator.pop(context);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppConstants.primaryColor,

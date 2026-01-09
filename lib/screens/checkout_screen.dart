@@ -9,16 +9,10 @@ import '../services/address_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final VoidCallback? onPaymentComplete;
-  final Address? selectedAddress;
-  final List<Address> addresses;
-  final Function(Address) onAddressChanged;
 
   const CheckoutScreen({
     super.key,
     this.onPaymentComplete,
-    this.selectedAddress,
-    required this.addresses,
-    required this.onAddressChanged,
   });
 
   @override
@@ -28,8 +22,11 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
   final CartService cartService = CartService();
-  List<Address> _addresses = [];
+
   final AddressService _addressService = AddressService();
+
+  List<Address> _addresses = [];
+  Address? _selectedAddress;
 
   String _selectedPaymentMethod = 'credit_card';
   String? _appliedCoupon;
@@ -58,7 +55,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (widget.selectedAddress != null) _buildAddressSection(),
+            _buildAddressSection(),
             const SizedBox(height: 20),
             _buildOrderSummary(),
             const SizedBox(height: 30),
@@ -95,7 +92,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            if (widget.selectedAddress != null)
+            if (_selectedAddress != null)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -111,7 +108,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          widget.selectedAddress!.tag,
+                          _selectedAddress!.tag,
                           style: const TextStyle(
                             color: AppConstants.primaryColor,
                             fontSize: 12,
@@ -119,7 +116,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           ),
                         ),
                       ),
-                      if (widget.selectedAddress!.isDefault)
+                      if (_selectedAddress!.isDefault)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
                           padding: const EdgeInsets.symmetric(
@@ -142,11 +139,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(widget.selectedAddress!.fullName),
-                  Text(widget.selectedAddress!.phone),
+                  Text(_selectedAddress!.fullName),
+                  Text(_selectedAddress!.phone),
                   const SizedBox(height: 4),
                   Text(
-                    widget.selectedAddress!.fullAddress,
+                    _selectedAddress!.fullAddress,
                     style: const TextStyle(color: Colors.grey),
                   ),
                 ],
@@ -533,39 +530,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _changeAddress() async {
-    final result = await showModalBottomSheet<Address>(
+    await _loadAddresses();
+
+    final selected = await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => AddressSelectionSheet(
-        addresses: widget.addresses,
-        selectedAddress: widget.selectedAddress,
-        onAddressSelected: (address) {
-          // This will be called when an address is selected
-          widget.onAddressChanged(address);
-        },
-        onAddNewAddressPressed: () async {
-          // Navigate to AddressScreen for adding new address
-          final newAddress = await Navigator.push<Address>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddressScreen(fromCheckout: true),
-            ),
-          );
+      builder: (_) => AddressSelectionSheet(
+        addresses: _addresses,
+        selectedAddress: _selectedAddress,
+        onAddressSelected: (address) async {
+          setState(() {
+            _selectedAddress = address;
+          });
 
-          if (newAddress != null) {
-            // Update the address in parent widget
-            widget.onAddressChanged(newAddress);
-            // You might need to refresh addresses here
-          }
+          // Optional: persist selection
+          await _addressService.setDefaultAddress(address.id);
         },
       ),
     );
+
+    if (selected != null && mounted) {
+      setState(() {
+        _selectedAddress = selected;
+      });
+    }
   }
 
   Future<void> _loadAddresses() async {
     final loadedAddresses = await _addressService.getAddresses();
+
+    Address? defaultAddress;
+    for (final addr in loadedAddresses) {
+      if (addr.isDefault) {
+        defaultAddress = addr;
+        break;
+      }
+    }
+
     setState(() {
       _addresses = loadedAddresses;
+      _selectedAddress = defaultAddress ??
+          (loadedAddresses.isNotEmpty ? loadedAddresses.first : null);
     });
   }
 
@@ -639,6 +644,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    if (_selectedAddress == null) {
+      _showError("Please select a shipping address");
+      return;
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -698,15 +708,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ],
             ),
             actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
-                  minimumSize: const Size(120, 45),
-                ),
-                child: const Text(
-                  "Continue",
-                  style: TextStyle(color: Colors.white),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.primaryColor,
+                    minimumSize: const Size(120, 45),
+                  ),
+                  child: const Text(
+                    "Continue",
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ],

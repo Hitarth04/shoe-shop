@@ -105,7 +105,7 @@ class _AddressScreenState extends State<AddressScreen> {
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: () {
-                  Navigator.pop(context, true);
+                  Navigator.pop(context);
                 },
               )
             : null,
