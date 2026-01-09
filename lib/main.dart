@@ -1,3 +1,5 @@
+//Adding Firebase
+
 import 'package:flutter/material.dart';
 import 'screens/auth/onboarding_screen.dart';
 
