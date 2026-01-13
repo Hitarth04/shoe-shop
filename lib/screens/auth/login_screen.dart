@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../main_nav_screen.dart';
 import 'signup_screen.dart';
+import 'package:shoe_shop/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController emailResetController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -243,6 +247,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     FocusScope.of(context).unfocus();
+
+    // 1. Validate Form
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -251,25 +257,69 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // 2. Sign in with Firebase Auth
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
 
-    setState(() {
-      _isLoading = false;
-    });
+      // 3. Fetch user data (Username) from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
 
-    final email = emailController.text.trim();
-    final userName = email.split('@').first;
-    final capitalizedUserName =
-        userName[0].toUpperCase() + userName.substring(1).toLowerCase();
+      String displayName = "User"; // Default
+      if (userDoc.exists && userDoc.data() != null) {
+        final fullName = userDoc.get('username') as String;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainNavScreen(
-          userName: capitalizedUserName,
+        // Safe Name Formatting
+        if (fullName.isNotEmpty) {
+          final firstName = fullName.trim().split(' ').first;
+          if (firstName.isNotEmpty) {
+            displayName = firstName[0].toUpperCase() +
+                firstName.substring(1).toLowerCase();
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      // 4. Navigate to Home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MainNavScreen(
+            userName: displayName,
+          ),
         ),
-      ),
-    );
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message ?? "Authentication failed"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("An unexpected error occurred"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      // ONLY update state if the widget is still on screen
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _showForgotPasswordDialog(BuildContext context) {
@@ -283,6 +333,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const Text("Enter your email to receive a password reset link:"),
             const SizedBox(height: 15),
             TextFormField(
+              controller: emailResetController, // <--- Link the controller here
               decoration: const InputDecoration(
                 labelText: "Email",
                 border: OutlineInputBorder(),
@@ -296,14 +347,38 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Password reset link sent to your email"),
-                  backgroundColor: Colors.green,
-                ),
-              );
+            onPressed: () async {
+              final email = emailResetController.text.trim();
+              if (email.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Please enter your email")),
+                );
+                return;
+              }
+
+              try {
+                // Actual Firebase Reset Logic
+                await FirebaseAuth.instance
+                    .sendPasswordResetEmail(email: email);
+
+                if (!mounted) return;
+                Navigator.pop(context);
+                emailResetController.clear(); // Clear the field for next time
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Password reset link sent to your email"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Error: ${e.toString()}"),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF5B5FDC),
@@ -316,5 +391,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    emailResetController.dispose();
+    super.dispose();
   }
 }

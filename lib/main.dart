@@ -8,12 +8,10 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // This line is essential for the new versions to work
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
-  // Add this temporary line to test:
-  print("Firebase Project ID: ${Firebase.app().options.projectId}");
 
   runApp(const MyApp());
 }

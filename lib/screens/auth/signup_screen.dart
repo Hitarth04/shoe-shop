@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../main_nav_screen.dart';
+import 'package:shoe_shop/services/auth_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -293,7 +294,20 @@ class _SignupScreenState extends State<SignupScreen> {
 
   void _handleSignup() async {
     FocusScope.of(context).unfocus();
+
+    // 1. Basic Form Validation
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // 2. Password Match Check (Already covered by validator, but safe to keep)
+    if (passwordController.text != confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Passwords do not match!"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -301,40 +315,67 @@ class _SignupScreenState extends State<SignupScreen> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    // 3. Call the Firebase Logic
+    String? result = await AuthService().signUpUser(
+      username: nameController.text.trim(),
+      email: emailController.text.trim(),
+      password: passwordController.text.trim(),
+      phoneNumber: phoneController.text.trim(),
+    );
+
+    // Check if widget is still in the tree before updating state
+    if (!mounted) return;
 
     setState(() {
       _isLoading = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 10),
-            const Text("Account created successfully!"),
-          ],
+    // 4. Handle the Outcome
+    if (result == "Success") {
+      // We use postFrameCallback to ensure the 'loading' state is fully rendered
+      // before we jump to a new screen.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Account created successfully!"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        final fullName = nameController.text.trim();
+        final firstName = fullName.split(' ').first;
+        final capitalizedFirstName =
+            firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainNavScreen(
+              userName: capitalizedFirstName,
+            ),
+          ),
+        );
+      });
+    } else {
+      // 5. Show Error if result is not "Success"
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result ?? "An unknown error occurred"),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 1),
-      ),
-    );
+      );
+    }
+  }
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    final fullName = nameController.text.trim();
-    final firstName = fullName.split(' ').first;
-    final capitalizedFirstName =
-        firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MainNavScreen(
-          userName: capitalizedFirstName,
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    phoneController.dispose();
+    super.dispose();
   }
 }
