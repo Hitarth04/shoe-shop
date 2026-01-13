@@ -2,12 +2,21 @@
 
 import 'package:flutter/material.dart';
 import 'screens/auth/onboarding_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Add this temporary line to test:
+  print("Firebase Project ID: ${Firebase.app().options.projectId}");
+
   runApp(const MyApp());
 }
-
-//Commit
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
