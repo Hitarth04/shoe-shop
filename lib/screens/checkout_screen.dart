@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import '../models/address_model.dart';
+import '../models/order_model.dart';
 import '../services/cart_service.dart';
+import '../services/order_service.dart';
 import '../widgets/address_selection_sheet.dart';
 import '../utils/constants.dart';
 import '../utils/validators.dart';
+import '../models/cart_model.dart';
 import 'address_screen.dart';
 import '../services/address_service.dart';
 
@@ -22,7 +26,6 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
   final CartService cartService = CartService();
-
   final AddressService _addressService = AddressService();
 
   List<Address> _addresses = [];
@@ -31,6 +34,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   String _selectedPaymentMethod = 'credit_card';
   String? _appliedCoupon;
   double _discountAmount = 0.0;
+
+  // FIX 1: Add a flag to prevent double-taps
+  bool _isPaymentProcessing = false;
 
   @override
   void initState() {
@@ -495,7 +501,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        onPressed: _processPayment,
+        // FIX 2: Disable button if processing
+        onPressed: _isPaymentProcessing ? null : _processPayment,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppConstants.primaryColor,
           shape: RoundedRectangleBorder(
@@ -503,28 +510,37 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           elevation: 2,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Proceed to Payment",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+        child: _isPaymentProcessing
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Proceed to Payment",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    "₹${cartService.finalTotal.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              "₹${cartService.finalTotal.toStringAsFixed(2)}",
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -543,7 +559,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             _selectedAddress = address;
           });
 
-          // Optional: persist selection
           await _addressService.setDefaultAddress(address.id);
         },
       ),
@@ -639,6 +654,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   void _processPayment() async {
+    if (_isPaymentProcessing) return;
+
     if (cartService.items.isEmpty) {
       _showError("Your cart is empty");
       return;
@@ -649,85 +666,109 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    setState(() {
+      _isPaymentProcessing = true;
+    });
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            const Text("Processing payment..."),
-            const SizedBox(height: 8),
-            Text(
-              "₹${cartService.finalTotal.toStringAsFixed(2)}",
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(color: AppConstants.primaryColor),
       ),
     );
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // FIX: Explicitly type the list as <CartItem>
+      final List<CartItem> itemsSnapshot =
+          List<CartItem>.from(cartService.items);
 
-    if (mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
+      // 1. Create the Order Object
+      final newOrder = Order(
+        orderId: const Uuid().v4(),
+        items: itemsSnapshot, // Now this matches List<CartItem>
+        totalAmount: cartService.finalTotal,
+        subtotalAmount: cartService.totalPrice,
+        shippingAmount: cartService.shippingAmount,
+        taxAmount: cartService.taxAmount,
+        discountAmount: cartService.discountAmount,
+        shippingAddress: _selectedAddress!,
+        orderDate: DateTime.now(),
+        status: "Processing",
+        appliedCoupon: cartService.appliedCoupon,
+      );
 
-    if (widget.onPaymentComplete != null) {
-      widget.onPaymentComplete!();
-    }
+      // 2. Save Order to Firestore
+      await OrderService().saveOrder(newOrder);
 
-    final shouldContinue = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text("Payment Successful! 🎉"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.check_circle, color: Colors.green, size: 60),
-                const SizedBox(height: 20),
-                Text(
-                  "Order Total: ₹${cartService.finalTotal.toStringAsFixed(2)}\n"
-                  "Items: ${cartService.itemCount}",
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  "Your order has been confirmed!",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+      // 3. Clear the Firestore Cart
+      await cartService.clearCart();
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (widget.onPaymentComplete != null) {
+        widget.onPaymentComplete!();
+      }
+
+      final shouldContinue = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text("Payment Successful! 🎉"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 60),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Order Total: ₹${newOrder.totalAmount.toStringAsFixed(2)}\n"
+                    "Items: ${itemsSnapshot.length}",
+                    textAlign: TextAlign.center,
                   ),
-                  textAlign: TextAlign.center,
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Your order has been saved to the database!",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+              actions: [
+                Center(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      minimumSize: const Size(120, 45),
+                    ),
+                    child: const Text(
+                      "Continue Shopping",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ],
             ),
-            actions: [
-              Center(
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppConstants.primaryColor,
-                    minimumSize: const Size(120, 45),
-                  ),
-                  child: const Text(
-                    "Continue",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ) ??
-        true;
+          ) ??
+          true;
 
-    if (shouldContinue && mounted) {
-      Navigator.pop(context);
+      if (shouldContinue && mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context).pop();
+      _showError("Failed to place order: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPaymentProcessing = false;
+        });
+      }
     }
   }
 
