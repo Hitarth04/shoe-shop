@@ -19,9 +19,14 @@ class OrderService {
     orders.add({
       'orderId': order.orderId,
       'orderDate': order.orderDate.toIso8601String(),
+      // UPDATED: Save full product details so we don't need to look them up later
       'items': order.items.map((item) {
         return {
           'product_id': item.product.id,
+          'product_name': item.product.name,
+          'product_price': item.product.price,
+          'product_image': item.product.image,
+          'product_desc': item.product.description,
           'quantity': item.quantity,
         };
       }).toList(),
@@ -61,10 +66,16 @@ class OrderService {
           orderId: orderJson['orderId'],
           orderDate: DateTime.parse(orderJson['orderDate']),
           items: (orderJson['items'] as List).map((item) {
-            final product = ProductManager.products.firstWhere(
-              (p) => p.id == item['product_id'],
-              orElse: () => ProductManager.products[0],
+            // UPDATED: Reconstruct Product from saved history data
+            // This prevents "Undefined ProductManager" errors
+            final product = Product(
+              id: item['product_id'] ?? 'unknown',
+              name: item['product_name'] ?? 'Unknown Product',
+              price: item['product_price'] ?? '₹0',
+              image: item['product_image'] ?? 'assets/images/shoes.png',
+              description: item['product_desc'] ?? '',
             );
+
             return CartItem(
               product: product,
               quantity: item['quantity'],
@@ -74,7 +85,7 @@ class OrderService {
           shippingAmount: (orderJson['shippingAmount'] ?? 0).toDouble(),
           taxAmount: (orderJson['taxAmount'] ?? 0).toDouble(),
           discountAmount: (orderJson['discountAmount'] ?? 0).toDouble(),
-          totalAmount: orderJson['totalAmount'].toDouble(),
+          totalAmount: (orderJson['totalAmount'] ?? 0).toDouble(),
           status: orderJson['status'],
           shippingAddress: Address(
             id: orderJson['shippingAddress']['id'],
@@ -91,6 +102,7 @@ class OrderService {
         );
       }).toList();
     } catch (e) {
+      print("Error parsing orders: $e");
       return [];
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/product_model.dart';
 import '../services/cart_service.dart';
 import '../services/wishlist_service.dart';
@@ -24,18 +25,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
-  List<Product> filteredProducts = ProductManager.products;
+  String _searchQuery = ""; // Store the search query
 
   final CartService cartService = CartService();
   final WishlistService wishlistService = WishlistService();
-
-  void _onSearchChanged(String query) {
-    setState(() {
-      filteredProducts = ProductManager.products
-          .where((p) => p.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               _buildSearchBar(),
               const SizedBox(height: 25),
-              _buildProductGrid(),
+              _buildProductGrid(), // Now dynamic!
             ],
           ),
         ),
@@ -77,7 +70,11 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: TextField(
             controller: searchController,
-            onChanged: _onSearchChanged,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.toLowerCase();
+              });
+            },
             decoration: InputDecoration(
               hintText: "Search shoes",
               prefixIcon: const Icon(Icons.search),
@@ -105,40 +102,83 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProductGrid() {
-    return Expanded(
-      child: GridView.builder(
-        itemCount: filteredProducts.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.75,
-        ),
-        itemBuilder: (context, index) {
-          final product = filteredProducts[index];
-          return ProductCard(
-            product: product,
-            onAddToCart: () async {
-              await cartService.addToCart(product);
-              widget.onCartUpdated?.call();
-              setState(() {});
-            },
-            onWishlistToggle: () {
-              wishlistService.toggleWishlist(product);
-              widget.onWishlistUpdated?.call();
-              setState(() {});
-            },
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ProductDetailsScreen(product: product),
-                ),
+    // 1. Listen to the 'products' collection from Firestore
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('products').snapshots(),
+      builder: (context, snapshot) {
+        // 2. Loading State
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF5B5FDC),
+              ),
+            ),
+          );
+        }
+
+        // 3. Error State
+        if (snapshot.hasError) {
+          return const Expanded(
+            child: Center(child: Text("Something went wrong loading products")),
+          );
+        }
+
+        // 4. Data Processing
+        final docs = snapshot.data?.docs ?? [];
+
+        // Convert Firestore docs to Product objects and filter by search query
+        final products = docs
+            .map((doc) => Product.fromFirestore(doc))
+            .where(
+                (product) => product.name.toLowerCase().contains(_searchQuery))
+            .toList();
+
+        // 5. Empty State
+        if (products.isEmpty) {
+          return const Expanded(
+            child: Center(child: Text("No shoes found")),
+          );
+        }
+
+        // 6. Display Grid
+        return Expanded(
+          child: GridView.builder(
+            itemCount: products.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.75,
+            ),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return ProductCard(
+                product: product,
+                onAddToCart: () async {
+                  await cartService.addToCart(product);
+                  widget.onCartUpdated?.call();
+                  setState(() {});
+                },
+                onWishlistToggle: () {
+                  wishlistService.toggleWishlist(product);
+                  widget.onWishlistUpdated?.call();
+                  setState(() {});
+                },
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ProductDetailsScreen(product: product),
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

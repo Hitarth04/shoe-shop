@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product_model.dart';
 import '../models/cart_model.dart';
 import '../utils/constants.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CartService {
   static final CartService _instance = CartService._internal();
@@ -19,6 +20,7 @@ class CartService {
     await _loadCart();
   }
 
+  // --- UPDATED METHOD ---
   Future<void> _loadCart() async {
     final prefs = await SharedPreferences.getInstance();
     final cartJson = prefs.getString(AppConstants.cartKey);
@@ -26,14 +28,27 @@ class CartService {
     if (cartJson != null) {
       try {
         final List<dynamic> cartData = json.decode(cartJson);
-        _cartData.items = cartData.map((item) {
-          final product = ProductManager.products
-              .firstWhere((p) => p.id == item['product_id']);
-          return CartItem(
-            product: product,
-            quantity: item['quantity'],
-          );
-        }).toList();
+        List<CartItem> loadedItems = [];
+
+        // Loop through saved IDs and fetch latest data from Firestore
+        for (var item in cartData) {
+          try {
+            final doc = await FirebaseFirestore.instance
+                .collection('products')
+                .doc(item['product_id'])
+                .get();
+
+            if (doc.exists) {
+              loadedItems.add(CartItem(
+                product: Product.fromFirestore(doc),
+                quantity: item['quantity'],
+              ));
+            }
+          } catch (e) {
+            print("Error loading cart item: $e");
+          }
+        }
+        _cartData.items = loadedItems;
       } catch (e) {
         _cartData.items = [];
       }
