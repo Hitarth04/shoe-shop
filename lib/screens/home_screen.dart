@@ -6,7 +6,7 @@ import '../services/wishlist_service.dart';
 import '../widgets/product_card.dart';
 import 'product_details_screen.dart';
 import '../utils/constants.dart';
-import 'admin/add_product_screen.dart';
+import 'admin/admin_dashboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (context) => const AddProductScreen()),
+                        builder: (context) => const AdminDashboardScreen()),
                   );
                 },
                 child: Text(

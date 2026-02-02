@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'address_screen.dart';
 import 'orders_screen.dart';
 import '../utils/constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userName;
@@ -30,9 +31,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserData() async {
+    final user = FirebaseAuth.instance.currentUser; // Get the live user
     final prefs = await SharedPreferences.getInstance();
+
     setState(() {
-      _userEmail = prefs.getString('user_email') ?? 'user@example.com';
+      // 1. Try getting email from Firebase Auth (Real)
+      // 2. Fallback to SharedPreferences (Legacy)
+      // 3. Fallback to Placeholder
+      _userEmail =
+          user?.email ?? prefs.getString('user_email') ?? 'user@example.com';
+
       _userPhone = prefs.getString('user_phone') ?? '+91 9876543210';
     });
   }
