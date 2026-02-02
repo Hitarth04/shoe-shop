@@ -4,6 +4,7 @@ import 'signup_screen.dart';
 import 'package:shoe_shop/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,6 +20,23 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailResetController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail(); // Load email when screen opens
+  }
+
+// Load saved email from local storage
+  void _loadSavedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      emailController.text = prefs.getString('saved_email') ?? '';
+      _rememberMe = emailController.text.isNotEmpty;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +166,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _rememberMe,
+                          activeColor: const Color(0xFF5B5FDC),
+                          onChanged: (value) {
+                            setState(() {
+                              _rememberMe = value!;
+                            });
+                          },
+                        ),
+                        const Text("Remember Me"),
+                      ],
+                    ),
                     Align(
                       alignment: Alignment.centerRight,
                       child: SizedBox(
@@ -247,6 +278,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _handleLogin() async {
     FocusScope.of(context).unfocus();
+
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setString('saved_email', emailController.text.trim());
+    } else {
+      await prefs.remove('saved_email');
+    }
 
     // 1. Validate Form
     if (!_formKey.currentState!.validate()) {

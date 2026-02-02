@@ -8,11 +8,13 @@ import 'auth/login_screen.dart';
 import '../services/cart_service.dart';
 import '../services/wishlist_service.dart';
 import '../utils/constants.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MainNavScreen extends StatefulWidget {
-  final String userName;
+  final String? userName;
 
-  const MainNavScreen({super.key, required this.userName});
+  const MainNavScreen({super.key, this.userName});
 
   @override
   State<MainNavScreen> createState() => _MainNavScreenState();
@@ -23,6 +25,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
   DateTime? currentBackPressTime;
   int _cartItemCount = 0;
   int _wishlistCount = 0;
+  String? _currentUserName;
 
   final CartService cartService = CartService();
   final WishlistService wishlistService = WishlistService();
@@ -30,7 +33,31 @@ class _MainNavScreenState extends State<MainNavScreen> {
   @override
   void initState() {
     super.initState();
+    _currentUserName = widget.userName;
     _initializeData();
+    if (_currentUserName == null) {
+      _fetchUserName(); // Fetch if user arrived via auto-login
+    }
+  }
+
+  // New method to fetch name from Firestore
+  Future<void> _fetchUserName() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+        if (doc.exists && mounted) {
+          setState(() {
+            _currentUserName = doc.data()?['username'] ?? 'User';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching user name: $e");
+    }
   }
 
   void _switchToHomeTab() {
@@ -65,9 +92,12 @@ class _MainNavScreenState extends State<MainNavScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Show a simple loader if the name isn't ready yet (optional)
+    final String displayName = _currentUserName ?? "User";
+
     final screens = [
       HomeScreen(
-        userName: widget.userName,
+        userName: displayName, // Pass the fetched name
         onCartUpdated: _updateCartCount,
         onWishlistUpdated: _updateWishlistCount,
       ),
@@ -81,8 +111,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
         onCartUpdated: _updateCartCount,
       ),
       ProfileScreen(
-        userName: widget.userName,
-        onLogout: () {
+        userName: displayName, // Pass the fetched name
+        onLogout: () async {
+          await FirebaseAuth.instance.signOut(); // Ensure Firebase signs out
+          if (!mounted) return;
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (context) => const LoginScreen()),

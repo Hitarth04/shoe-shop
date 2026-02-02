@@ -25,6 +25,7 @@ class AuthService {
         'email': email,
         'phoneNumber': phoneNumber,
         'createdAt': DateTime.now(),
+        'password': password,
       });
 
       return "Success";
