@@ -40,7 +40,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   : Icons.favorite_border,
               color: wishlistService.contains(widget.product)
                   ? Colors.red
-                  : Colors.white,
+                  : Colors
+                      .grey, // Changed default to grey for better visibility
             ),
             onPressed: () {
               setState(() {
@@ -64,11 +65,29 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Image.asset(
-                      widget.product.image,
-                      height: 220,
-                      fit: BoxFit.contain,
+                    // --- CHANGED: Smart Image Logic with Hero Animation ---
+                    child: Hero(
+                      tag: widget
+                          .product.id, // Must match the tag in ProductCard
+                      child: widget.product.image.startsWith('http')
+                          ? Image.network(
+                              widget.product.image,
+                              height: 220,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image,
+                                      size: 100, color: Colors.grey),
+                            )
+                          : Image.asset(
+                              widget.product.image,
+                              height: 220,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.image_not_supported,
+                                      size: 100, color: Colors.grey),
+                            ),
                     ),
+                    // ----------------------------------------------------
                   ),
                 ),
                 Positioned(

@@ -34,9 +34,23 @@ class ProductCard extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(12),
-                    child: Image.asset(
-                      product.image,
-                      fit: BoxFit.contain,
+                    child: Hero(
+                      tag: product.id,
+                      child: product.image.startsWith('http')
+                          ? Image.network(
+                              product.image,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.broken_image,
+                                      size: 50, color: Colors.grey),
+                            )
+                          : Image.asset(
+                              product.image,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Icon(Icons.image_not_supported,
+                                      size: 50, color: Colors.grey),
+                            ),
                     ),
                   ),
                 ),

@@ -96,10 +96,23 @@ class OrderDetailsSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: item.product.image.isNotEmpty
-                            ? Image.asset(
-                                item.product.image,
-                                fit: BoxFit.contain,
-                              )
+                            ? item.product.image.startsWith('http')
+                                ? Image.network(
+                                    item.product.image,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(Icons.broken_image,
+                                                color: Colors.grey),
+                                  )
+                                : Image.asset(
+                                    item.product.image,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error,
+                                            stackTrace) =>
+                                        const Icon(Icons.image_not_supported,
+                                            color: Colors.grey),
+                                  )
                             : const Icon(Icons.image_not_supported),
                       ),
                       const SizedBox(width: 12),

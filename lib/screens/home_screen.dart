@@ -6,6 +6,7 @@ import '../services/wishlist_service.dart';
 import '../widgets/product_card.dart';
 import 'product_details_screen.dart';
 import '../utils/constants.dart';
+import 'admin/add_product_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -41,11 +42,21 @@ class _HomeScreenState extends State<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 10),
-              Text(
-                "Hello, ${widget.userName} 👋",
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+              GestureDetector(
+                onLongPress: () {
+                  // Secret Admin Access!
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AddProductScreen()),
+                  );
+                },
+                child: Text(
+                  "Hello, ${widget.userName} 👋",
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(height: 5),

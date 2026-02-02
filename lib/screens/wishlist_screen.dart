@@ -150,10 +150,19 @@ class _WishlistScreenState extends State<WishlistScreen> {
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Image.asset(
-            product.image,
-            fit: BoxFit.contain,
-          ),
+          child: product.image.startsWith('http')
+              ? Image.network(
+                  product.image,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, color: Colors.grey),
+                )
+              : Image.asset(
+                  product.image,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.image_not_supported, color: Colors.grey),
+                ),
         ),
         title: Text(
           product.name,

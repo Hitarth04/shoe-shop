@@ -121,11 +121,27 @@ class _CartScreenState extends State<CartScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Image.asset(
-          item.product.image,
+        leading: Container(
           width: 60,
           height: 60,
-          fit: BoxFit.cover,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          // --- UPDATED: Smart Image Logic ---
+          child: item.product.image.startsWith('http')
+              ? Image.network(
+                  item.product.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image, color: Colors.grey),
+                )
+              : Image.asset(
+                  item.product.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.image_not_supported, color: Colors.grey),
+                ),
         ),
         title: Text(item.product.name),
         subtitle: Column(
