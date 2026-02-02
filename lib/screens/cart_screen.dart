@@ -128,7 +128,6 @@ class _CartScreenState extends State<CartScreen> {
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(8),
           ),
-          // --- UPDATED: Smart Image Logic ---
           child: item.product.image.startsWith('http')
               ? Image.network(
                   item.product.image,
@@ -299,95 +298,22 @@ class _CartScreenState extends State<CartScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => CheckoutScreen(
-          onPaymentComplete: () async {
-            final addresses = await addressService.getAddresses();
+          onPaymentComplete: () {
+            // FIX: Removed order creation logic here.
+            // CheckoutScreen handles saving the order and clearing the cart.
+            // We only need to notify the parent to update the badge/UI.
 
-            if (addresses.isEmpty) {
-              return;
-            }
-
-            final selectedAddress = addresses.firstWhere(
-              (a) => a.isDefault,
-              orElse: () => addresses.first,
-            );
-
-            await _createOrder(selectedAddress);
-            await cartService.clearCart();
             widget.onCartUpdated?.call();
 
             if (mounted) {
               setState(() {});
             }
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("Order placed successfully!"),
-                backgroundColor: Colors.green,
-                duration: Duration(seconds: 3),
-              ),
-            );
+            // Note: CheckoutScreen usually navigates back to Home,
+            // so we might not even be on this screen anymore.
           },
         ),
       ),
     );
-  }
-
-  Future<void> _showAddAddressDialog() async {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Add Address"),
-        content: const Text(
-            "You need to add a shipping address before placing an order. Would you like to add one now?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddressScreen(fromCheckout: true),
-                ),
-              );
-              if (result != true) {
-                _proceedToCheckout();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
-            ),
-            child: const Text(
-              "Add Address",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _createOrder(Address shippingAddress) async {
-    final orderId = "ORD${DateTime.now().millisecondsSinceEpoch}";
-
-    final order = Order(
-      orderId: orderId,
-      orderDate: DateTime.now(),
-      items: List.from(cartService.items),
-      subtotalAmount: cartService.totalPrice,
-      shippingAmount: cartService.shippingAmount,
-      taxAmount: cartService.taxAmount,
-      discountAmount: cartService.discountAmount,
-      totalAmount: cartService.finalTotal,
-      status: 'Processing',
-      shippingAddress: shippingAddress,
-      appliedCoupon: cartService.appliedCoupon,
-    );
-
-    await orderService.saveOrder(order);
   }
 }

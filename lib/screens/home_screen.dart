@@ -26,10 +26,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
-  String _searchQuery = ""; // Store the search query
+  String _searchQuery = "";
 
   final CartService cartService = CartService();
   final WishlistService wishlistService = WishlistService();
+
+  // FIX 1: Define the stream variable here
+  late Stream<QuerySnapshot> _productsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    // FIX 1: Initialize the stream once.
+    // This prevents the connection from resetting when you click "Add to Cart"
+    _productsStream =
+        FirebaseFirestore.instance.collection('products').snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 10),
               GestureDetector(
                 onLongPress: () {
-                  // Secret Admin Access!
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -67,7 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 20),
               _buildSearchBar(),
               const SizedBox(height: 25),
-              _buildProductGrid(), // Now dynamic!
+              _buildProductGrid(),
             ],
           ),
         ),
@@ -113,11 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildProductGrid() {
-    // 1. Listen to the 'products' collection from Firestore
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('products').snapshots(),
+      stream: _productsStream, // FIX 1: Use the persistent stream variable
       builder: (context, snapshot) {
-        // 2. Loading State
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Expanded(
             child: Center(
@@ -128,33 +137,31 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         }
 
-        // 3. Error State
         if (snapshot.hasError) {
           return const Expanded(
             child: Center(child: Text("Something went wrong loading products")),
           );
         }
 
-        // 4. Data Processing
         final docs = snapshot.data?.docs ?? [];
 
-        // Convert Firestore docs to Product objects and filter by search query
         final products = docs
             .map((doc) => Product.fromFirestore(doc))
             .where(
                 (product) => product.name.toLowerCase().contains(_searchQuery))
             .toList();
 
-        // 5. Empty State
         if (products.isEmpty) {
           return const Expanded(
             child: Center(child: Text("No shoes found")),
           );
         }
 
-        // 6. Display Grid
         return Expanded(
           child: GridView.builder(
+            // FIX 2: Add a PageStorageKey.
+            // This explicitly tells Flutter to remember the scroll position of this list.
+            key: const PageStorageKey('product_grid'),
             itemCount: products.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
