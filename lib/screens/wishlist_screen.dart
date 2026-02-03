@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../services/wishlist_service.dart';
 import '../services/cart_service.dart';
-import '../widgets/product_card.dart';
 import 'product_details_screen.dart';
 import '../utils/constants.dart';
 

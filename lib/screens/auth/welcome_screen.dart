@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shoe_shop/services/auth_service.dart'; // Ensure this path is correct
 import '../main_nav_screen.dart'; // Ensure this path is correct
 import 'login_screen.dart';

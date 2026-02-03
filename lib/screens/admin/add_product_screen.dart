@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../utils/constants.dart'; // Ensure this points to your constants
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});

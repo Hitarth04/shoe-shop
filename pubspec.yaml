@@ -36,6 +36,10 @@ dependencies:
   firebase_messaging: ^15.2.1
   flutter_local_notifications: ^18.0.1
   permission_handler: ^11.3.0
+  flutter_map: ^7.0.2 # The Map Widget
+  latlong2: ^0.9.1 # Helper for Coordinates
+  geocoding: ^3.0.0
+  geolocator: ^13.0.2
 
 dev_dependencies:
   flutter_test:

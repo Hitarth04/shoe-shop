@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../utils/extensions.dart'; // Ensure this exists for date formatting
 
 class AdminOrdersScreen extends StatelessWidget {
   const AdminOrdersScreen({super.key});

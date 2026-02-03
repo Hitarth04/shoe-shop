@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'add_product_screen.dart';
 import 'manage_products_screen.dart';
 import 'admin_orders_screen.dart';
-import '../../utils/constants.dart';
 
 class AdminDashboardScreen extends StatelessWidget {
   const AdminDashboardScreen({super.key});
