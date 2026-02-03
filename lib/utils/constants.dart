@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppConstants {
   // Colors
-  static const primaryColor = Color(0xFF5B5FDC);
+  static const primaryColor = Color.fromARGB(255, 91, 95, 220);
   static const backgroundColor = Colors.white;
 
   // SharedPreferences keys
