@@ -13,7 +13,12 @@ class OrdersScreen extends StatefulWidget {
 
 class _OrdersScreenState extends State<OrdersScreen> {
   final OrderService orderService = OrderService();
-  List<Order> orders = [];
+
+  // --- FIX 1: Rename 'orders' to '_allOrders' ---
+  List<Order> _allOrders = [];
+
+  // --- FIX 2: Add the filter state variable ---
+  String _filterStatus = 'All';
 
   @override
   void initState() {
@@ -23,10 +28,19 @@ class _OrdersScreenState extends State<OrdersScreen> {
 
   Future<void> _loadOrders() async {
     final loadedOrders = await orderService.getOrders();
+    // Sort by date descending
     loadedOrders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
     setState(() {
-      orders = loadedOrders;
+      _allOrders = loadedOrders; // Update the renamed variable
     });
+  }
+
+  // --- FIX 3: Add the getter for filtering ---
+  List<Order> get _filteredOrders {
+    if (_filterStatus == 'All') return _allOrders;
+    return _allOrders
+        .where((o) => o.status.toLowerCase() == _filterStatus.toLowerCase())
+        .toList();
   }
 
   Color _getStatusColor(String status) {
@@ -49,8 +63,28 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Orders"),
+        actions: [
+          // --- FIX 4: Add Filter Button ---
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.filter_list),
+            onSelected: (value) {
+              setState(() {
+                _filterStatus = value;
+              });
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'All', child: Text("All Orders")),
+              const PopupMenuItem(
+                  value: 'Processing', child: Text("Processing")),
+              const PopupMenuItem(value: 'Shipped', child: Text("Shipped")),
+              const PopupMenuItem(value: 'Delivered', child: Text("Delivered")),
+              const PopupMenuItem(value: 'Cancelled', child: Text("Cancelled")),
+            ],
+          ),
+        ],
       ),
-      body: orders.isEmpty
+      // --- FIX 5: Use '_filteredOrders' instead of 'orders' ---
+      body: _filteredOrders.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -61,22 +95,26 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     color: Colors.grey,
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    "No orders yet",
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  Text(
+                    _filterStatus == 'All'
+                        ? "No orders yet"
+                        : "No $_filterStatus orders",
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "Your orders will appear here",
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                  if (_filterStatus == 'All')
+                    const Text(
+                      "Your orders will appear here",
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   const SizedBox(height: 30),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text("Continue Shopping"),
-                  ),
+                  if (_filterStatus == 'All')
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Continue Shopping"),
+                    ),
                 ],
               ),
             )
@@ -89,22 +127,21 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "${orders.length} orders",
+                        "${_filteredOrders.length} orders", // Update count
                         style: const TextStyle(
                           fontWeight: FontWeight.w500,
                           color: Colors.grey,
                         ),
                       ),
-                      // ... (PopupMenuButton remains the same)
                     ],
                   ),
                 ),
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: orders.length,
+                    itemCount: _filteredOrders.length, // Use filtered count
                     itemBuilder: (context, index) {
-                      final order = orders[index];
+                      final order = _filteredOrders[index]; // Use filtered item
                       return _buildOrderCard(order);
                     },
                   ),
@@ -115,10 +152,11 @@ class _OrdersScreenState extends State<OrdersScreen> {
   }
 
   Widget _buildOrderCard(Order order) {
-    // FIX 1: Safety check for shortening ID
-    String shortId = order.orderId.length > 8
-        ? order.orderId.substring(0, 8).toUpperCase()
-        : order.orderId;
+    // FIX 6: Ensure short ID logic handles strings safely
+    String shortId = order.orderId;
+    if (order.orderId.length > 8) {
+      shortId = order.orderId.substring(0, 8).toUpperCase();
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -129,12 +167,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- TOP ROW ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // FIX 2: Wrapped in Expanded to prevent overflow
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,8 +193,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
                     ],
                   ),
                 ),
-
-                // Status Badge
                 Container(
                   margin: const EdgeInsets.only(left: 8),
                   padding: const EdgeInsets.symmetric(
@@ -185,8 +219,6 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ],
             ),
             const SizedBox(height: 16),
-
-            // --- MIDDLE: ITEMS ---
             if (order.items.isNotEmpty) ...[
               for (var i = 0;
                   i < (order.items.length > 2 ? 2 : order.items.length);
@@ -229,11 +261,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   ),
                 ),
             ],
-
             const SizedBox(height: 16),
             const Divider(height: 1),
-
-            // --- BOTTOM: BUTTON ---
             SizedBox(
               width: double.infinity,
               child: TextButton(

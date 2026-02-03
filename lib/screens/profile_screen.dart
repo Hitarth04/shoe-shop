@@ -4,6 +4,7 @@ import 'address_screen.dart';
 import 'orders_screen.dart';
 import '../utils/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userName;
@@ -28,6 +29,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final status = await Permission.notification.status;
+    setState(() {
+      _notificationsEnabled = status.isGranted;
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -400,46 +409,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showNotificationsSettings() {
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
       builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
+        builder: (context, setModalState) {
           return Container(
             padding: const EdgeInsets.all(20),
+            height: 250,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Notification Settings",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
+                const Text("Notification Settings",
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 20),
                 SwitchListTile(
                   title: const Text("Enable Notifications"),
-                  subtitle: const Text("Turn off to disable all notifications"),
                   value: _notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _notificationsEnabled = value;
-                    });
-                  },
                   activeColor: AppConstants.primaryColor,
+                  onChanged: (value) async {
+                    if (value) {
+                      // Request Permission
+                      final status = await Permission.notification.request();
+                      setState(() => _notificationsEnabled = status.isGranted);
+                      setModalState(() {});
+                    } else {
+                      // Cannot disable programmatically on Android/iOS, must go to settings
+                      openAppSettings();
+                    }
+                  },
                 ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    child: const Text(
-                      "Save Settings",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
+                const Spacer(),
+                const Text(
+                    "Note: Toggle ON to request permission. To turn OFF, you must use System Settings.",
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           );

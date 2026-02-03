@@ -5,12 +5,17 @@ import 'screens/auth/onboarding_screen.dart';
 import 'screens/main_nav_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize Notifications
+  await NotificationService().initialize();
+
   runApp(const MyApp());
 }
 

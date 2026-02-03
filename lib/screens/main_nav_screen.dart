@@ -10,6 +10,7 @@ import '../services/wishlist_service.dart';
 import '../utils/constants.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/notification_service.dart';
 
 class MainNavScreen extends StatefulWidget {
   final String? userName;
@@ -38,6 +39,35 @@ class _MainNavScreenState extends State<MainNavScreen> {
     if (_currentUserName == null) {
       _fetchUserName(); // Fetch if user arrived via auto-login
     }
+    _setupOrderListener(); // <--- Start Listening
+  }
+
+  // --- NEW: LISTEN FOR ANY STATUS CHANGE ---
+  void _setupOrderListener() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('orders')
+        .snapshots()
+        .listen((snapshot) {
+      for (var change in snapshot.docChanges) {
+        // Trigger on ANY modification (Edit)
+        if (change.type == DocumentChangeType.modified) {
+          final data = change.doc.data() as Map<String, dynamic>;
+          final status = data['status'];
+          final orderId = data['orderId'] ?? '???';
+          final shortId = orderId.toString().substring(0, 8).toUpperCase();
+
+          // Fire notification for ANY status
+          if (status != null) {
+            NotificationService().showOrderNotification(shortId, status);
+          }
+        }
+      }
+    });
   }
 
   // New method to fetch name from Firestore
