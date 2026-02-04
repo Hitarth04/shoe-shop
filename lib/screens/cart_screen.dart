@@ -44,6 +44,7 @@ class _CartScreenState extends State<CartScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("My Cart"),
+        backgroundColor: Colors.white,
         automaticallyImplyLeading: false,
       ),
       body:
@@ -116,6 +117,7 @@ class _CartScreenState extends State<CartScreen> {
     final price = item.product.price.toDouble();
 
     return Card(
+      color: Colors.grey.shade100,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         leading: Container(

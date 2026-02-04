@@ -28,28 +28,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.product.name),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              wishlistService.contains(widget.product)
-                  ? Icons.favorite
-                  : Icons.favorite_border,
-              color: wishlistService.contains(widget.product)
-                  ? Colors.red
-                  : Colors
-                      .grey, // Changed default to grey for better visibility
-            ),
-            onPressed: () {
-              setState(() {
-                wishlistService.toggleWishlist(widget.product);
-              });
-            },
-          ),
-        ],
+        backgroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -92,7 +71,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
                 Positioned(
                   top: 10,
-                  right: 30,
+                  right: 40,
                   child: GestureDetector(
                     onTap: () {
                       setState(() {

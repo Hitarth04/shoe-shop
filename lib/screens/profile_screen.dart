@@ -20,17 +20,16 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-// 1. Add WidgetsBindingObserver to listen for app resume
 class _ProfileScreenState extends State<ProfileScreen>
     with WidgetsBindingObserver {
   String? _userEmail;
   String? _userPhone;
   bool _notificationsEnabled = false;
+  bool _locationEnabled = false; // 1. Added State Variable
 
   @override
   void initState() {
     super.initState();
-    // 2. Register observer
     WidgetsBinding.instance.addObserver(this);
     _loadUserData();
     _checkPermission();
@@ -38,12 +37,10 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
-    // 3. Remove observer
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // 4. Check permission again when user returns from Settings
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
@@ -51,11 +48,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  // 2. Updated to check BOTH permissions
   Future<void> _checkPermission() async {
-    final status = await Permission.notification.status;
+    final notifStatus = await Permission.notification.status;
+    final locStatus = await Permission.location.status;
+
     if (mounted) {
       setState(() {
-        _notificationsEnabled = status.isGranted;
+        _notificationsEnabled = notifStatus.isGranted;
+        _locationEnabled = locStatus.isGranted;
       });
     }
   }
@@ -76,8 +77,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
         title: const Text("My Profile"),
-        centerTitle: true,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -126,6 +127,13 @@ class _ProfileScreenState extends State<ProfileScreen>
               title: "Notifications",
               subtitle: "Manage your notifications",
               onTap: _showNotificationsSettings,
+            ),
+            // 3. Added Location Tile Here
+            _buildMenuTile(
+              icon: Icons.my_location,
+              title: "Location Access",
+              subtitle: "Manage location permissions",
+              onTap: _showLocationSettings,
             ),
             _buildMenuTile(
               icon: Icons.security,
@@ -249,6 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     required VoidCallback onTap,
   }) {
     return Card(
+      color: Colors.grey.shade100,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: onTap,
@@ -271,7 +280,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // --- UPDATED NOTIFICATION LOGIC ---
   void _showNotificationsSettings() {
     showModalBottomSheet(
       context: context,
@@ -294,23 +302,19 @@ class _ProfileScreenState extends State<ProfileScreen>
                   activeColor: AppConstants.primaryColor,
                   onChanged: (value) async {
                     if (value) {
-                      // 1. Try to Request Permission
                       PermissionStatus status =
                           await Permission.notification.request();
 
                       if (status.isGranted) {
-                        // Success: Update Toggle
                         setState(() => _notificationsEnabled = true);
                         setModalState(() {});
                       } else {
-                        // Failed (System blocked it): Show "Open Settings" dialog
                         if (mounted) {
-                          Navigator.pop(context); // Close bottom sheet
-                          _showPermissionDeniedDialog(); // Show alert
+                          Navigator.pop(context);
+                          _showPermissionDeniedDialog("Notifications");
                         }
                       }
                     } else {
-                      // 2. Disable: Must go to settings
                       if (mounted) {
                         Navigator.pop(context);
                         await openAppSettings();
@@ -320,7 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 const Spacer(),
                 const Text(
-                  "Note: To change notification settings, you may need to visit your system settings.",
+                  "Note: To change settings, you may need to visit system settings.",
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 )
               ],
@@ -331,14 +335,70 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  // --- NEW DIALOG FOR BLOCKED PERMISSIONS ---
-  void _showPermissionDeniedDialog() {
+  // 4. Added Location Settings Bottom Sheet (Same Logic)
+  void _showLocationSettings() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: const EdgeInsets.all(20),
+            height: 250,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Location Settings",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                SwitchListTile(
+                  title: const Text("Allow Location Access"),
+                  value: _locationEnabled,
+                  activeColor: AppConstants.primaryColor,
+                  onChanged: (value) async {
+                    if (value) {
+                      PermissionStatus status =
+                          await Permission.location.request();
+
+                      if (status.isGranted) {
+                        setState(() => _locationEnabled = true);
+                        setModalState(() {});
+                      } else {
+                        if (mounted) {
+                          Navigator.pop(context);
+                          _showPermissionDeniedDialog("Location");
+                        }
+                      }
+                    } else {
+                      if (mounted) {
+                        Navigator.pop(context);
+                        await openAppSettings();
+                      }
+                    }
+                  },
+                ),
+                const Spacer(),
+                const Text(
+                  "Note: Location is used to auto-fill your address on the map.",
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                )
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // 5. Updated Dialog to handle generic feature names
+  void _showPermissionDeniedDialog(String feature) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Permission Required"),
-        content: const Text(
-            "Notifications are disabled for this app. Please enable them in your phone's settings to receive order updates."),
+        content: Text(
+            "$feature access is disabled for this app. Please enable it in your phone's settings."),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -347,7 +407,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              openAppSettings(); // Takes user to App Settings
+              openAppSettings();
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppConstants.primaryColor),
@@ -360,6 +420,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showEditProfile() {
+    // ... (Your existing _showEditProfile logic remains identical)
     final nameController = TextEditingController(text: widget.userName);
     final emailController = TextEditingController(text: _userEmail);
     final phoneController = TextEditingController(text: _userPhone);
@@ -438,7 +499,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showPaymentMethods() {
-    // ... (Keep existing implementation)
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -472,6 +532,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showPrivacySettings() {
+    // ... (Your existing _showPrivacySettings logic remains identical)
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -507,6 +568,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showTermsAndConditions() {
+    // ... (Your existing logic)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -525,6 +587,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showHelpSupport() {
+    // ... (Your existing logic)
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -550,6 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showLogoutConfirmation() {
+    // ... (Your existing logic)
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

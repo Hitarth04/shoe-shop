@@ -61,8 +61,10 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("My Orders"),
+        backgroundColor: Colors.white,
         actions: [
           // --- FIX 4: Add Filter Button ---
           PopupMenuButton<String>(
@@ -159,6 +161,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     }
 
     return Card(
+      color: Colors.grey.shade100,
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

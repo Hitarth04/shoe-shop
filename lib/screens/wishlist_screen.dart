@@ -31,7 +31,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("My Wishlist"),
-        centerTitle: true,
+        backgroundColor: Colors.white,
         actions: [
           if (wishlistService.items.isNotEmpty)
             IconButton(
@@ -132,6 +132,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
 
   Widget _buildWishlistItem(Product product) {
     return Card(
+      color: Colors.grey.shade100,
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         onTap: () {

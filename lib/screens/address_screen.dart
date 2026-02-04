@@ -101,6 +101,7 @@ class _AddressScreenState extends State<AddressScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Saved Addresses"),
+        backgroundColor: Colors.white,
         leading: widget.fromCheckout
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -145,6 +146,7 @@ class _AddressScreenState extends State<AddressScreen> {
               itemBuilder: (context, index) {
                 final address = addresses[index];
                 return Card(
+                  color: Colors.grey.shade100,
                   margin: const EdgeInsets.only(bottom: 12),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
