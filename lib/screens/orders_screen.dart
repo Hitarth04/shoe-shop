@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shoe_shop/utils/constants.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
 import '../widgets/order_details_sheet.dart';
@@ -112,10 +113,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
                   const SizedBox(height: 30),
                   if (_filterStatus == 'All')
                     ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.secondaryColor,
+                      ),
                       onPressed: () {
                         Navigator.pop(context);
                       },
-                      child: const Text("Continue Shopping"),
+                      child: const Text(
+                        "Continue Shopping",
+                        style: TextStyle(
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                 ],
               ),
@@ -285,6 +294,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => OrderDetailsSheet(order: order),
     );
   }

@@ -135,7 +135,16 @@ class _AddressScreenState extends State<AddressScreen> {
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: _addNewAddress,
-                    child: const Text("Add New Address"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.secondaryColor,
+                    ),
+                    // style: AppConstants.secondaryColor,
+                    child: const Text(
+                      "Add New Address",
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ],
               ),

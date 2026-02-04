@@ -1,55 +1,61 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/address_model.dart';
-import '../utils/constants.dart';
 
 class AddressService {
   static final AddressService _instance = AddressService._internal();
   factory AddressService() => _instance;
   AddressService._internal();
 
-  final Uuid uuid = const Uuid();
+  // Get current User ID
+  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
+
+  // Get Firestore Reference
+  CollectionReference? get _addressRef {
+    if (_userId == null) return null;
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(_userId)
+        .collection('addresses');
+  }
 
   Future<List<Address>> getAddresses() async {
-    final prefs = await SharedPreferences.getInstance();
-    final addressesJson = prefs.getString(AppConstants.addressesKey);
-
-    if (addressesJson == null) return [];
+    if (_addressRef == null) return [];
 
     try {
-      final List<dynamic> addressesData = json.decode(addressesJson);
-      return addressesData.map((addrJson) {
+      final snapshot = await _addressRef!.get();
+      return snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
         return Address(
-          id: addrJson['id'],
-          tag: addrJson['tag'],
-          fullName: addrJson['fullName'],
-          phone: addrJson['phone'],
-          street: addrJson['street'],
-          city: addrJson['city'],
-          state: addrJson['state'],
-          pincode: addrJson['pincode'],
-          isDefault: addrJson['isDefault'] ?? false,
+          id: doc.id,
+          tag: data['tag'] ?? 'Home',
+          fullName: data['fullName'] ?? '',
+          phone: data['phone'] ?? '',
+          street: data['street'] ?? '',
+          city: data['city'] ?? '',
+          state: data['state'] ?? '',
+          pincode: data['pincode'] ?? '',
+          isDefault: data['isDefault'] ?? false,
         );
       }).toList();
     } catch (e) {
+      print("Error fetching addresses: $e");
       return [];
     }
   }
 
   Future<void> saveAddress(Address address) async {
-    final prefs = await SharedPreferences.getInstance();
-    final addressesJson = prefs.getString(AppConstants.addressesKey) ?? '[]';
-    final List<dynamic> addresses = json.decode(addressesJson);
+    if (_addressRef == null) return;
 
-    // If setting as default, remove default from others
+    // If setting as default, uncheck others first
     if (address.isDefault) {
-      for (var addr in addresses) {
-        addr['isDefault'] = false;
+      final allDocs = await _addressRef!.get();
+      for (var doc in allDocs.docs) {
+        await doc.reference.update({'isDefault': false});
       }
     }
 
-    addresses.add({
+    await _addressRef!.doc(address.id).set({
       'id': address.id,
       'tag': address.tag,
       'fullName': address.fullName,
@@ -60,32 +66,23 @@ class AddressService {
       'pincode': address.pincode,
       'isDefault': address.isDefault,
     });
-
-    await prefs.setString(AppConstants.addressesKey, json.encode(addresses));
   }
 
   Future<void> deleteAddress(String addressId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final addressesJson = prefs.getString(AppConstants.addressesKey) ?? '[]';
-    final List<dynamic> addresses = json.decode(addressesJson);
-
-    addresses.removeWhere((addr) => addr['id'] == addressId);
-    await prefs.setString(AppConstants.addressesKey, json.encode(addresses));
+    if (_addressRef == null) return;
+    await _addressRef!.doc(addressId).delete();
   }
 
   Future<void> setDefaultAddress(String addressId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final addressesJson = prefs.getString(AppConstants.addressesKey) ?? '[]';
-    final List<dynamic> addresses = json.decode(addressesJson);
+    if (_addressRef == null) return;
 
-    for (var addr in addresses) {
-      addr['isDefault'] = addr['id'] == addressId;
+    final allDocs = await _addressRef!.get();
+    final batch = FirebaseFirestore.instance.batch();
+
+    for (var doc in allDocs.docs) {
+      batch.update(doc.reference, {'isDefault': doc.id == addressId});
     }
 
-    await prefs.setString(AppConstants.addressesKey, json.encode(addresses));
-  }
-
-  String generateId() {
-    return uuid.v4();
+    await batch.commit();
   }
 }

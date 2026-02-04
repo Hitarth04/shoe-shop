@@ -113,7 +113,7 @@ class OrderService {
                 price: item['price'],
                 image: item['image'],
                 description: '', // Not needed for history list
-                category: item['category'],
+                category: item['category'] ?? 'Others',
               ),
               quantity: item['quantity'],
             );
