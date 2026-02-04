@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../screens/auth/welcome_screen.dart';
+import '../../utils/constants.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -54,7 +55,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _controller,
               count: 3,
               effect: const SwapEffect(
-                activeDotColor: Color(0xFF5B5FDC),
+                activeDotColor: AppConstants.primaryColor,
                 dotHeight: 10,
                 dotWidth: 10,
               ),
@@ -85,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5B5FDC),
+                    backgroundColor: AppConstants.primaryColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25),
                     ),

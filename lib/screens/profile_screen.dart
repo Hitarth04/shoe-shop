@@ -197,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF5B5FDC),
+                color: AppConstants.primaryColor,
               ),
             ),
           ),
@@ -229,7 +229,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.edit, color: Color(0xFF5B5FDC)),
+          icon: const Icon(Icons.edit, color: AppConstants.primaryColor),
           onPressed: _showEditProfile,
         ),
       ],
@@ -268,7 +268,10 @@ class _ProfileScreenState extends State<ProfileScreen>
             color: AppConstants.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppConstants.primaryColor),
+          child: Icon(
+            icon,
+            color: AppConstants.primaryColor,
+          ),
         ),
         title: Text(
           title,
@@ -420,7 +423,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showEditProfile() {
-    // ... (Your existing _showEditProfile logic remains identical)
     final nameController = TextEditingController(text: widget.userName);
     final emailController = TextEditingController(text: _userEmail);
     final phoneController = TextEditingController(text: _userPhone);
@@ -428,6 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text("Edit Profile"),
         content: SingleChildScrollView(
           child: Column(
@@ -463,7 +466,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(
+                color: Colors.black,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -486,7 +494,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
+              backgroundColor: AppConstants.secondaryColor,
             ),
             child: const Text(
               "Save",

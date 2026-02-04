@@ -91,7 +91,8 @@ class AddressSelectionSheet extends StatelessWidget {
                       ],
                     ),
                     trailing: selectedAddress?.id == address.id
-                        ? const Icon(Icons.check, color: Color(0xFF5B5FDC))
+                        ? const Icon(Icons.check,
+                            color: AppConstants.primaryColor)
                         : null,
                   ),
                 );

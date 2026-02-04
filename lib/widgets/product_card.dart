@@ -22,7 +22,7 @@ class ProductCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Stack(
@@ -85,7 +85,7 @@ class ProductCard extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: onAddToCart,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
+                      backgroundColor: AppConstants.secondaryColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),

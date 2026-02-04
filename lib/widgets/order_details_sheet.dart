@@ -11,6 +11,12 @@ class OrderDetailsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.all(
+          Radius.circular(20.0),
+        ),
+        color: Colors.white,
+      ),
       padding: const EdgeInsets.all(20),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.9,
@@ -40,7 +46,7 @@ class OrderDetailsSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: AppConstants.surfaceColor,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -83,7 +89,7 @@ class OrderDetailsSheet extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: AppConstants.surfaceColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -223,7 +229,7 @@ class OrderDetailsSheet extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppConstants.primaryColor,
+                  backgroundColor: AppConstants.secondaryColor,
                 ),
                 child: const Text(
                   "Close",

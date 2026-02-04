@@ -4,6 +4,7 @@ import 'package:shoe_shop/services/auth_service.dart'; // Ensure this path is co
 import '../main_nav_screen.dart'; // Ensure this path is correct
 import 'login_screen.dart';
 import 'signup_screen.dart';
+import '../../utils/constants.dart';
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -103,7 +104,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF5B5FDC),
+                          backgroundColor: AppConstants.primaryColor,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(25),
                           ),
@@ -135,14 +136,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             borderRadius: BorderRadius.circular(25),
                           ),
                           side: const BorderSide(
-                            color: Color(0xFF5B5FDC),
+                            color: AppConstants.primaryColor,
                           ),
                         ),
                         child: const Text(
                           "Sign Up",
                           style: TextStyle(
                             fontSize: 16,
-                            color: Color(0xFF5B5FDC),
+                            color: AppConstants.primaryColor,
                           ),
                         ),
                       ),
@@ -197,7 +198,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               color: Colors.black.withOpacity(0.5),
               child: const Center(
                 child: CircularProgressIndicator(
-                  color: Color(0xFF5B5FDC),
+                  color: AppConstants.primaryColor,
                 ),
               ),
             ),

@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return const Expanded(
             child: Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF5B5FDC),
+                color: AppConstants.primaryColor,
               ),
             ),
           );

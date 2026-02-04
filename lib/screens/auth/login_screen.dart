@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../main_nav_screen.dart';
 import 'signup_screen.dart';
 import 'package:shoe_shop/services/auth_service.dart';
+import '../../utils/constants.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -76,9 +77,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF5B5FDC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5B5FDC),
+        backgroundColor: AppConstants.primaryColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -180,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () => _showForgotPasswordDialog(context),
                         child: const Text(
                           "Forgot password?",
-                          style: TextStyle(color: Color(0xFF5B5FDC)),
+                          style: TextStyle(color: AppConstants.primaryColor),
                         ),
                       ),
                     ),
@@ -188,7 +189,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Checkbox(
                           value: _rememberMe,
-                          activeColor: const Color(0xFF5B5FDC),
+                          activeColor: AppConstants.primaryColor,
                           onChanged: (value) {
                             setState(() {
                               _rememberMe = value!;
@@ -208,13 +209,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: _isLoading
                             ? const Center(
                                 child: CircularProgressIndicator(
-                                  color: Color(0xFF5B5FDC),
+                                  color: AppConstants.primaryColor,
                                 ),
                               )
                             : ElevatedButton(
                                 onPressed: _handleLogin,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF5B5FDC),
+                                  backgroundColor: AppConstants.secondaryColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
                                   ),
@@ -245,7 +246,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             "Sign Up",
                             style: TextStyle(
-                              color: Color(0xFF5B5FDC),
+                              color: AppConstants.primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -287,7 +288,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.grey),
+                          side:
+                              const BorderSide(color: AppConstants.accentColor),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -320,7 +322,7 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: controller,
       validator: validator,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: const Color(0xFF5B5FDC)),
+        prefixIcon: Icon(icon, color: AppConstants.primaryColor),
         suffixIcon: suffixIcon,
         labelText: label,
         labelStyle: const TextStyle(color: Colors.grey),
@@ -330,11 +332,12 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF5B5FDC), width: 2),
+          borderSide:
+              const BorderSide(color: AppConstants.primaryColor, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderSide: const BorderSide(color: AppConstants.accentColor),
         ),
       ),
     );
@@ -475,7 +478,7 @@ class _LoginScreenState extends State<LoginScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF5B5FDC),
+              backgroundColor: AppConstants.primaryColor,
             ),
             child: const Text(
               "Send Link",

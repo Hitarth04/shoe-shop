@@ -3,6 +3,7 @@ import '../models/product_model.dart';
 import '../services/cart_service.dart';
 import '../services/wishlist_service.dart';
 import '../utils/constants.dart';
+import '../../utils/constants.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
   final Product product;
@@ -163,7 +164,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       setState(() {});
                     },
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF5B5FDC)),
+                      side: const BorderSide(color: AppConstants.primaryColor),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: Row(
@@ -175,7 +176,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               : Icons.favorite_border,
                           color: wishlistService.contains(widget.product)
                               ? Colors.red
-                              : const Color(0xFF5B5FDC),
+                              : AppConstants.primaryColor,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -186,7 +187,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           style: TextStyle(
                             color: wishlistService.contains(widget.product)
                                 ? Colors.red
-                                : const Color(0xFF5B5FDC),
+                                : AppConstants.primaryColor,
                           ),
                         ),
                       ],

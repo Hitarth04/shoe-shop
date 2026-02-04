@@ -333,7 +333,7 @@ class _MainNavScreenState extends State<MainNavScreen> {
         const SnackBar(
           content: Text('Press back again to exit'),
           duration: Duration(seconds: 2),
-          backgroundColor: Color(0xFF5B5FDC),
+          backgroundColor: AppConstants.primaryColor,
         ),
       );
       return Future.value(false);

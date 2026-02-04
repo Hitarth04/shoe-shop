@@ -74,7 +74,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
           ElevatedButton(
             onPressed: _navigateToHomeTab,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
+              backgroundColor: AppConstants.secondaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
             child: const Text(

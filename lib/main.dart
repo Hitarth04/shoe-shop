@@ -6,6 +6,7 @@ import 'screens/main_nav_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'services/notification_service.dart';
+import '../../utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
       title: 'Shoe Store',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: const Color(0xFF5B5FDC),
+        primaryColor: AppConstants.primaryColor,
         fontFamily: 'Roboto',
         useMaterial3: true,
       ),

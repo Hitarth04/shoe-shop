@@ -79,7 +79,7 @@ class _CartScreenState extends State<CartScreen> {
           ElevatedButton(
             onPressed: widget.onContinueShopping ?? () {},
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppConstants.primaryColor,
+              backgroundColor: AppConstants.secondaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
             ),
             child: const Text(
@@ -238,7 +238,7 @@ class _CartScreenState extends State<CartScreen> {
             child: ElevatedButton(
               onPressed: _proceedToCheckout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppConstants.primaryColor,
+                backgroundColor: AppConstants.secondaryColor,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

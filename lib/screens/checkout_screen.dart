@@ -50,6 +50,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Checkout"),
+        backgroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -78,6 +79,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildAddressSection() {
     return Card(
+      color: AppConstants.surfaceColor,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -161,6 +163,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildOrderSummary() {
     return Card(
+      color: AppConstants.surfaceColor,
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -236,6 +239,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildCouponSection() {
     return Card(
+      color: AppConstants.surfaceColor,
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -315,7 +319,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ElevatedButton(
                     onPressed: _applyCoupon,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
+                      backgroundColor: AppConstants.secondaryColor,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 14,
@@ -347,6 +351,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   return Chip(
                     label: Text(entry.key),
                     backgroundColor: Colors.grey.shade100,
+                    side: BorderSide(color: AppConstants.accentColor),
                     onDeleted: () {
                       _couponController.text = entry.key;
                     },
@@ -363,6 +368,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildPaymentMethodSection() {
     return Card(
+      color: AppConstants.surfaceColor,
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -429,7 +435,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: _selectedPaymentMethod == value
-              ? AppConstants.primaryColor.withOpacity(0.1)
+              ? AppConstants.accentColor.withOpacity(0.1)
               : Colors.grey.shade50,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
@@ -503,7 +509,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // FIX 2: Disable button if processing
         onPressed: _isPaymentProcessing ? null : _processPayment,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppConstants.primaryColor,
+          backgroundColor: AppConstants.secondaryColor,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -742,7 +748,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
+                      backgroundColor: AppConstants.secondaryColor,
                       minimumSize: const Size(120, 45),
                     ),
                     child: const Text(

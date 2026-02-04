@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../main_nav_screen.dart';
 import 'package:shoe_shop/services/auth_service.dart';
+import '../../utils/constants.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -26,9 +27,9 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF5B5FDC),
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF5B5FDC),
+        backgroundColor: AppConstants.primaryColor,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -206,13 +207,13 @@ class _SignupScreenState extends State<SignupScreen> {
                         child: _isLoading
                             ? const Center(
                                 child: CircularProgressIndicator(
-                                  color: Color(0xFF5B5FDC),
+                                  color: AppConstants.primaryColor,
                                 ),
                               )
                             : ElevatedButton(
                                 onPressed: _handleSignup,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF5B5FDC),
+                                  backgroundColor: AppConstants.secondaryColor,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(25),
                                   ),
@@ -241,7 +242,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           child: const Text(
                             "Login",
                             style: TextStyle(
-                              color: Color(0xFF5B5FDC),
+                              color: AppConstants.primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -272,7 +273,7 @@ class _SignupScreenState extends State<SignupScreen> {
       controller: controller,
       validator: validator,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: const Color(0xFF5B5FDC)),
+        prefixIcon: Icon(icon, color: AppConstants.primaryColor),
         suffixIcon: suffixIcon,
         labelText: label,
         labelStyle: const TextStyle(color: Colors.grey),
@@ -282,11 +283,12 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF5B5FDC), width: 2),
+          borderSide:
+              const BorderSide(color: AppConstants.primaryColor, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderSide: const BorderSide(color: AppConstants.accentColor),
         ),
       ),
     );

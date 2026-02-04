@@ -131,6 +131,10 @@ class _AddressFormState extends State<AddressForm> {
                 const SizedBox(height: 20),
               ],
 
+              SizedBox(
+                height: 10.0,
+              ),
+
               // Validators.validateName takes 1 arg (String?) -> OK
               _buildTextField(
                   "Full Name", _fullNameController, Validators.validateName),
@@ -183,7 +187,8 @@ class _AddressFormState extends State<AddressForm> {
                     child: ChoiceChip(
                       label: Text(tag),
                       selected: isSelected,
-                      selectedColor: AppConstants.primaryColor.withOpacity(0.2),
+                      selectedColor:
+                          Colors.cyanAccent.shade100.withOpacity(0.2),
                       labelStyle: TextStyle(
                         color: isSelected
                             ? AppConstants.primaryColor
