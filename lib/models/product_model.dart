@@ -6,6 +6,7 @@ class Product {
   final String image;
   final String price;
   final String description;
+  final String category; // <--- NEW FIELD
   bool isWishlisted;
 
   Product({
@@ -14,21 +15,21 @@ class Product {
     required this.image,
     required this.price,
     required this.description,
+    required this.category, // <--- Add to constructor
     this.isWishlisted = false,
   });
 
-  // Factory constructor to create a Product from Firestore data
   factory Product.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
     return Product(
       id: doc.id,
       name: data['name'] ?? '',
-      // If the image path is broken, fallback to a placeholder or the first image
       image: data['image'] ?? 'assets/images/shoes.png',
       price: data['price'] ?? '₹0',
       description: data['description'] ?? '',
-      isWishlisted:
-          false, // Default to false, we'll handle this with WishlistService later
+      // Default to 'Other' if category is missing in Firestore
+      category: data['category'] ?? 'Other',
+      isWishlisted: false,
     );
   }
 }

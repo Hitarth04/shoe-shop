@@ -28,6 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
   String _searchQuery = "";
 
+  // --- FILTER STATE VARIABLES ---
+  String _selectedCategory = 'All';
+  RangeValues _priceRange = const RangeValues(0, 10000);
+  String _sortOption =
+      'Newest'; // Options: Newest, Price: Low to High, Price: High to Low
+
   final CartService cartService = CartService();
   final WishlistService wishlistService = WishlistService();
 
@@ -74,7 +80,41 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 20),
               _buildSearchBar(),
-              const SizedBox(height: 25),
+
+              // Show active filters if any are applied
+              if (_selectedCategory != 'All' || _sortOption != 'Newest')
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        if (_selectedCategory != 'All')
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: Chip(
+                              label: Text(_selectedCategory),
+                              deleteIcon: const Icon(Icons.close, size: 18),
+                              onDeleted: () =>
+                                  setState(() => _selectedCategory = 'All'),
+                              backgroundColor:
+                                  AppConstants.primaryColor.withOpacity(0.1),
+                            ),
+                          ),
+                        if (_sortOption != 'Newest')
+                          Chip(
+                            label: Text(_sortOption),
+                            deleteIcon: const Icon(Icons.close, size: 18),
+                            onDeleted: () =>
+                                setState(() => _sortOption = 'Newest'),
+                            backgroundColor: Colors.orange.withOpacity(0.1),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 15),
               _buildProductGrid(),
             ],
           ),
@@ -107,16 +147,135 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          height: 48,
-          width: 48,
-          decoration: BoxDecoration(
-            color: AppConstants.primaryColor,
-            borderRadius: BorderRadius.circular(14),
+        // --- FILTER BUTTON ---
+        GestureDetector(
+          onTap: _showFilterBottomSheet,
+          child: Container(
+            height: 48,
+            width: 48,
+            decoration: BoxDecoration(
+              color: AppConstants.primaryColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.tune, color: Colors.white),
           ),
-          child: const Icon(Icons.tune, color: Colors.white),
         ),
       ],
+    );
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Filter & Sort",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 20),
+
+                  // 1. Categories
+                  const Text("Category",
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: ["All", "Sneakers", "Formal", "Sports", "Loafers"]
+                        .map((category) {
+                      final isSelected = _selectedCategory == category;
+                      return ChoiceChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        selectedColor: AppConstants.primaryColor,
+                        labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black),
+                        onSelected: (selected) {
+                          setModalState(() => _selectedCategory = category);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 2. Price Range
+                  Text(
+                      "Price Range: ₹${_priceRange.start.round()} - ₹${_priceRange.end.round()}",
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  RangeSlider(
+                    values: _priceRange,
+                    min: 0,
+                    max: 10000,
+                    divisions: 100,
+                    activeColor: AppConstants.primaryColor,
+                    labels: RangeLabels("₹${_priceRange.start.round()}",
+                        "₹${_priceRange.end.round()}"),
+                    onChanged: (values) {
+                      setModalState(() => _priceRange = values);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 3. Sort Options
+                  const Text("Sort By",
+                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      "Newest",
+                      "Price: Low to High",
+                      "Price: High to Low"
+                    ].map((option) {
+                      final isSelected = _sortOption == option;
+                      return ChoiceChip(
+                        label: Text(option),
+                        selected: isSelected,
+                        selectedColor: AppConstants
+                            .secondaryColor, // Use secondary color for sort
+                        labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black),
+                        onSelected: (selected) {
+                          setModalState(() => _sortOption = option);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Apply Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(
+                            () {}); // Trigger rebuild of Home Screen with new filters
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppConstants.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                      ),
+                      child: const Text("Apply Filters",
+                          style: TextStyle(color: Colors.white, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -142,20 +301,64 @@ class _HomeScreenState extends State<HomeScreen> {
 
         final docs = snapshot.data?.docs ?? [];
 
-        final products = docs
-            .map((doc) => Product.fromFirestore(doc))
-            .where(
-                (product) => product.name.toLowerCase().contains(_searchQuery))
-            .toList();
+        // --- FILTERING LOGIC ---
+        var products =
+            docs.map((doc) => Product.fromFirestore(doc)).where((product) {
+          // 1. Search Query
+          final matchesSearch =
+              product.name.toLowerCase().contains(_searchQuery);
 
-        // Sync status with service
+          // 2. Category Filter
+          final matchesCategory = _selectedCategory == 'All' ||
+              product.category.toLowerCase() == _selectedCategory.toLowerCase();
+
+          // 3. Price Filter (Clean string '₹2500' -> 2500.0)
+          double priceVal = 0.0;
+          try {
+            String cleanPrice =
+                product.price.replaceAll(RegExp(r'[^0-9.]'), '');
+            priceVal = double.parse(cleanPrice);
+          } catch (e) {
+            priceVal = 0.0;
+          }
+          final matchesPrice =
+              priceVal >= _priceRange.start && priceVal <= _priceRange.end;
+
+          return matchesSearch && matchesCategory && matchesPrice;
+        }).toList();
+
+        // --- SORTING LOGIC ---
+        if (_sortOption == 'Price: Low to High') {
+          products.sort((a, b) {
+            double pA =
+                double.tryParse(a.price.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                    0;
+            double pB =
+                double.tryParse(b.price.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                    0;
+            return pA.compareTo(pB);
+          });
+        } else if (_sortOption == 'Price: High to Low') {
+          products.sort((a, b) {
+            double pA =
+                double.tryParse(a.price.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                    0;
+            double pB =
+                double.tryParse(b.price.replaceAll(RegExp(r'[^0-9.]'), '')) ??
+                    0;
+            return pB.compareTo(pA);
+          });
+        }
+        // "Newest" is default Firestore order, usually fine to leave as is or sort by ID/timestamp if available.
+
+        // Sync Wishlist status
         for (var product in products) {
           product.isWishlisted = wishlistService.contains(product);
         }
 
         if (products.isEmpty) {
           return const Expanded(
-            child: Center(child: Text("No shoes found")),
+            child: Center(child: Text("No shoes found matching your filters")),
           );
         }
 
@@ -184,7 +387,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   setState(() {});
                 },
                 onTap: () async {
-                  // 1. Wait for the user to return
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -192,15 +394,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           ProductDetailsScreen(product: product),
                     ),
                   );
-
-                  // 2. Refresh Home Screen (Updates Heart Icons)
                   if (mounted) {
                     setState(() {});
-
-                    // 3. Update Parent/NavBar (Updates Badge Counter) <--- NEW LINE
                     widget.onWishlistUpdated?.call();
-                    widget.onCartUpdated
-                        ?.call(); // Good practice to update cart too
+                    widget.onCartUpdated?.call();
                   }
                 },
               );

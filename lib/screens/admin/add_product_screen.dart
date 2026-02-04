@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../utils/constants.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -10,129 +11,135 @@ class AddProductScreen extends StatefulWidget {
 
 class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
-  final priceController = TextEditingController();
-  final descController = TextEditingController();
-  final imageController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController imageController = TextEditingController();
+  final TextEditingController priceController = TextEditingController();
+  final TextEditingController descController = TextEditingController();
+
+  // --- NEW: Category Selection ---
+  String _selectedCategory = 'Sneakers';
+  final List<String> _categories = [
+    'Sneakers',
+    'Formal',
+    'Sports',
+    'Loafers',
+    'Other'
+  ];
 
   bool _isLoading = false;
 
-  Future<void> _uploadProduct() async {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Add New Product")),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    _buildTextField("Product Name", nameController),
+                    const SizedBox(height: 15),
+                    _buildTextField("Image URL", imageController),
+                    const SizedBox(height: 15),
+                    _buildTextField("Price (e.g. 2500)", priceController,
+                        isNumber: true),
+                    const SizedBox(height: 15),
+                    _buildTextField("Description", descController, maxLines: 3),
+                    const SizedBox(height: 15),
+
+                    // --- NEW: CATEGORY DROPDOWN ---
+                    DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      decoration: InputDecoration(
+                        labelText: "Category",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      items: _categories.map((String category) {
+                        return DropdownMenuItem(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          _selectedCategory = newValue!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 30),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _saveProduct,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppConstants.primaryColor,
+                        ),
+                        child: const Text("Add Product",
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller,
+      {bool isNumber = false, int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      validator: (value) => value!.isEmpty ? "Required" : null,
+    );
+  }
+
+  Future<void> _saveProduct() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Create a unique ID for the product
-      final docRef = FirebaseFirestore.instance.collection('products').doc();
+      // Format price with symbol if missing
+      String price = priceController.text.trim();
+      if (!price.startsWith('₹')) {
+        price = '₹$price';
+      }
 
-      await docRef.set({
-        'id': docRef.id, // Save the ID inside the document too
+      await FirebaseFirestore.instance.collection('products').add({
         'name': nameController.text.trim(),
-        'price': "₹${priceController.text.trim()}", // Auto-add currency symbol
+        'image': imageController.text.trim(),
+        'price': price,
         'description': descController.text.trim(),
-        'image': imageController.text.trim(), // Expecting a URL here
+        'category': _selectedCategory, // <--- SAVING THE CATEGORY
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('✅ Product Added Successfully!')),
-      );
-      Navigator.pop(context); // Go back after success
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Product Added Successfully!")),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Secret Admin Console"),
-        backgroundColor: Colors.black87,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                "Add New Kicks",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              _buildTextField(
-                  controller: nameController,
-                  label: "Shoe Name",
-                  icon: Icons.shopping_bag_outlined),
-              const SizedBox(height: 15),
-              _buildTextField(
-                  controller: priceController,
-                  label: "Price (e.g. 4999)",
-                  icon: Icons.attach_money,
-                  keyboardType: TextInputType.number),
-              const SizedBox(height: 15),
-              _buildTextField(
-                  controller: imageController,
-                  label: "Image URL",
-                  hint: "Paste a link from Google Images",
-                  icon: Icons.image_outlined),
-              const SizedBox(height: 15),
-              _buildTextField(
-                  controller: descController,
-                  label: "Description",
-                  icon: Icons.description_outlined,
-                  maxLines: 3),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _uploadProduct,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.black87,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("UPLOAD TO DATABASE"),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? hint,
-    TextInputType? keyboardType,
-    int maxLines = 1,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      validator: (val) => val!.isEmpty ? "Required" : null,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
   }
 }
