@@ -31,14 +31,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final CartService cartService = CartService();
   final WishlistService wishlistService = WishlistService();
 
-  // FIX 1: Define the stream variable here
   late Stream<QuerySnapshot> _productsStream;
 
   @override
   void initState() {
     super.initState();
-    // FIX 1: Initialize the stream once.
-    // This prevents the connection from resetting when you click "Add to Cart"
     _productsStream =
         FirebaseFirestore.instance.collection('products').snapshots();
   }
@@ -125,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildProductGrid() {
     return StreamBuilder<QuerySnapshot>(
-      stream: _productsStream, // FIX 1: Use the persistent stream variable
+      stream: _productsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Expanded(
@@ -151,6 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 (product) => product.name.toLowerCase().contains(_searchQuery))
             .toList();
 
+        // Sync status with service
+        for (var product in products) {
+          product.isWishlisted = wishlistService.contains(product);
+        }
+
         if (products.isEmpty) {
           return const Expanded(
             child: Center(child: Text("No shoes found")),
@@ -159,8 +161,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Expanded(
           child: GridView.builder(
-            // FIX 2: Add a PageStorageKey.
-            // This explicitly tells Flutter to remember the scroll position of this list.
             key: const PageStorageKey('product_grid'),
             itemCount: products.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -183,14 +183,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   widget.onWishlistUpdated?.call();
                   setState(() {});
                 },
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  // 1. Wait for the user to return
+                  await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
                           ProductDetailsScreen(product: product),
                     ),
                   );
+
+                  // 2. Refresh Home Screen (Updates Heart Icons)
+                  if (mounted) {
+                    setState(() {});
+
+                    // 3. Update Parent/NavBar (Updates Badge Counter) <--- NEW LINE
+                    widget.onWishlistUpdated?.call();
+                    widget.onCartUpdated
+                        ?.call(); // Good practice to update cart too
+                  }
                 },
               );
             },

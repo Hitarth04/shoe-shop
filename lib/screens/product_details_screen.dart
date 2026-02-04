@@ -199,7 +199,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   child: ElevatedButton(
                     onPressed: _addToCartWithQuantity,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
+                      backgroundColor: AppConstants.secondaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: const Text(
