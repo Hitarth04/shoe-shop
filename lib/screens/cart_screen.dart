@@ -145,6 +145,14 @@ class _CartScreenState extends State<CartScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Display Size
+            if (item.size != 'N/A') ...[
+              Text(
+                "Size: ${item.size}",
+                style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 2),
+            ],
             Text(item.product.price),
             Text(
               "Total: ₹${(price * item.quantity).toStringAsFixed(2)}",
@@ -161,7 +169,8 @@ class _CartScreenState extends State<CartScreen> {
             IconButton(
               icon: const Icon(Icons.remove, size: 20),
               onPressed: () async {
-                await cartService.decreaseQuantity(item.product);
+                // FIX: Pass the CartItem object
+                await cartService.decreaseQuantity(item);
                 widget.onCartUpdated?.call();
                 refreshCart();
               },
@@ -176,7 +185,8 @@ class _CartScreenState extends State<CartScreen> {
             IconButton(
               icon: const Icon(Icons.add, size: 20),
               onPressed: () async {
-                await cartService.increaseQuantity(item.product);
+                // FIX: Pass the CartItem object
+                await cartService.increaseQuantity(item);
                 widget.onCartUpdated?.call();
                 refreshCart();
               },
@@ -184,7 +194,8 @@ class _CartScreenState extends State<CartScreen> {
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red, size: 20),
               onPressed: () async {
-                await cartService.removeItem(item.product);
+                // FIX: Pass product AND size
+                await cartService.removeItem(item.product, item.size);
                 widget.onCartUpdated?.call();
                 refreshCart();
               },
@@ -307,9 +318,6 @@ class _CartScreenState extends State<CartScreen> {
             if (mounted) {
               setState(() {});
             }
-
-            // Note: CheckoutScreen usually navigates back to Home,
-            // so we might not even be on this screen anymore.
           },
         ),
       ),

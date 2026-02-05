@@ -4,6 +4,7 @@ import '../services/wishlist_service.dart';
 import '../services/cart_service.dart';
 import 'product_details_screen.dart';
 import '../utils/constants.dart';
+import '../widgets/size_selector.dart';
 
 class WishlistScreen extends StatefulWidget {
   final VoidCallback? onWishlistUpdated;
@@ -187,12 +188,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             IconButton(
               icon: const Icon(Icons.add_shopping_cart, size: 20),
               color: AppConstants.primaryColor,
-              onPressed: () async {
-                await cartService.addToCart(product);
-                if (widget.onCartUpdated != null) {
-                  widget.onCartUpdated!();
-                }
-              },
+              onPressed: () => _showSizeSelectionDialog(product),
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
@@ -208,6 +204,60 @@ class _WishlistScreenState extends State<WishlistScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSizeSelectionDialog(Product product) {
+    // Sorting logic to pick default
+    final sortedAvailable = List<String>.from(product.sizes)
+      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
+    String? selectedSize =
+        sortedAvailable.isNotEmpty ? sortedAvailable.first : null;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: Text("Select Size for ${product.name}"),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: SizeSelector(
+                availableSizes: product.sizes,
+                selectedSize: selectedSize,
+                onSizeSelected: (size) {
+                  setDialogState(() => selectedSize = size);
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel")),
+              ElevatedButton(
+                onPressed: selectedSize == null
+                    ? null
+                    : () async {
+                        await cartService.addToCart(product, selectedSize!);
+                        if (mounted) {
+                          Navigator.pop(context);
+                          setState(() {});
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text("Moved ${product.name} to Cart"),
+                              backgroundColor: Colors.green),
+                        );
+                      },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.secondaryColor),
+                child: const Text("Add to Cart",
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

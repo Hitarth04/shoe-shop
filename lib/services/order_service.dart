@@ -60,6 +60,7 @@ class OrderService {
             'price': item.product.price, // Save price AT TIME OF PURCHASE
             'image': item.product.image,
             'quantity': item.quantity,
+            'size': item.size,
           };
         }).toList(),
       });
@@ -114,8 +115,10 @@ class OrderService {
                 image: item['image'],
                 description: '', // Not needed for history list
                 category: item['category'] ?? 'Others',
+                sizes: [],
               ),
               quantity: item['quantity'],
+              size: item['size'] ?? 'N/A',
             );
           }).toList(),
         );

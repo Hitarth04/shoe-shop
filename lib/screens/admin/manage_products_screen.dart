@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/product_model.dart';
+import '../../utils/constants.dart';
 
 class ManageProductsScreen extends StatefulWidget {
   const ManageProductsScreen({super.key});
@@ -149,7 +150,6 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     final priceController = TextEditingController(
         text: data['price'].toString().replaceAll('₹', ''));
 
-    // Default to 'Sneakers' if category is missing or invalid
     String currentCategory = data['category'] ?? 'Sneakers';
     final List<String> categories = [
       'Sneakers',
@@ -160,35 +160,74 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
     ];
     if (!categories.contains(currentCategory)) currentCategory = 'Other';
 
+    // Load sizes
+    final List<String> currentSizes =
+        List<String>.from(data['sizes'] ?? ['7', '8', '9', '10']);
+    final List<String> allPossibleSizes = [
+      '6',
+      '7',
+      '8',
+      '9',
+      '10',
+      '11',
+      '12'
+    ];
+
     showDialog(
       context: context,
       builder: (ctx) {
-        // Use StatefulBuilder to handle Dropdown state inside Dialog
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
               title: const Text("Edit Product"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(labelText: "Name")),
-                  TextField(
-                      controller: priceController,
-                      decoration: const InputDecoration(labelText: "Price")),
-                  const SizedBox(height: 15),
-                  DropdownButtonFormField<String>(
-                    value: currentCategory,
-                    decoration: const InputDecoration(labelText: "Category"),
-                    items: categories
-                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                        .toList(),
-                    onChanged: (val) {
-                      setDialogState(() => currentCategory = val!);
-                    },
-                  ),
-                ],
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(labelText: "Name")),
+                    TextField(
+                        controller: priceController,
+                        decoration: const InputDecoration(labelText: "Price")),
+                    const SizedBox(height: 15),
+                    DropdownButtonFormField<String>(
+                      value: currentCategory,
+                      decoration: const InputDecoration(labelText: "Category"),
+                      items: categories
+                          .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) =>
+                          setDialogState(() => currentCategory = val!),
+                    ),
+                    const SizedBox(height: 15),
+                    const Text("Available Sizes:",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: allPossibleSizes.map((size) {
+                        final isSelected = currentSizes.contains(size);
+                        return FilterChip(
+                          label: Text(size),
+                          selected: isSelected,
+                          selectedColor:
+                              AppConstants.primaryColor.withOpacity(0.2),
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              if (selected)
+                                currentSizes.add(size);
+                              else
+                                currentSizes.remove(size);
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -199,7 +238,10 @@ class _ManageProductsScreenState extends State<ManageProductsScreen> {
                     await doc.reference.update({
                       'name': nameController.text,
                       'price': '₹${priceController.text}',
-                      'category': currentCategory, // <--- UPDATE CATEGORY
+                      'category': currentCategory,
+                      'sizes': currentSizes.isEmpty
+                          ? ['8']
+                          : currentSizes, // <--- UPDATE SIZES
                     });
                     if (context.mounted) Navigator.pop(ctx);
                   },

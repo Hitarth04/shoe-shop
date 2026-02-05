@@ -40,16 +40,19 @@ class CartService {
     }
 
     try {
-      // Fetch all documents from the user's cart collection
       final snapshot = await _cartRef!.get();
       List<CartItem> loadedItems = [];
 
       for (var doc in snapshot.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        final String productId = doc.id; // Doc ID is the Product ID
+
+        // COMPATIBILITY FIX:
+        // New items have 'productId' field. Old items used doc.id as productId.
+        final String productId = data['productId'] ?? doc.id;
+        final String size = data['size'] ?? 'N/A'; // Default for old items
         final int quantity = data['quantity'] ?? 1;
 
-        // Fetch the LIVE product details (Name, Price, Image) from the 'products' collection
+        // Fetch product details
         final productDoc = await FirebaseFirestore.instance
             .collection('products')
             .doc(productId)
@@ -59,6 +62,7 @@ class CartService {
           loadedItems.add(CartItem(
             product: Product.fromFirestore(productDoc),
             quantity: quantity,
+            size: size, // <--- LOAD SIZE
           ));
         }
       }
@@ -70,44 +74,52 @@ class CartService {
     }
   }
 
-  // --- 2. ADD TO CART ---
-  Future<void> addToCart(Product product, {int quantity = 1}) async {
+  // --- 2. ADD TO CART (Now requires Size) ---
+  Future<void> addToCart(Product product, String size,
+      {int quantity = 1}) async {
     if (_cartRef == null) return;
 
-    // Update Local State (Instant UI Feedback)
-    final existingIndex =
-        _cartData.items.indexWhere((item) => item.product.id == product.id);
+    // 1. Update Local State (Check ID AND Size)
+    final existingIndex = _cartData.items.indexWhere(
+        (item) => item.product.id == product.id && item.size == size);
 
     if (existingIndex >= 0) {
       _cartData.items[existingIndex].quantity += quantity;
     } else {
-      _cartData.items.add(CartItem(product: product, quantity: quantity));
+      _cartData.items
+          .add(CartItem(product: product, quantity: quantity, size: size));
     }
 
-    // Update Firestore
-    // We use merge: true so it creates the doc if it doesn't exist
-    await _cartRef!.doc(product.id).set({
+    // 2. Update Firestore
+    // Use Composite ID: 'productId_size' to allow duplicates of same shoe
+    final String docId = '${product.id}_$size';
+
+    await _cartRef!.doc(docId).set({
+      'productId': product.id,
+      'size': size,
       'quantity': FieldValue.increment(quantity),
       'addedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
   // --- 3. UPDATE QUANTITY ---
-  Future<void> updateQuantity(Product product, int quantity) async {
+  Future<void> updateQuantity(
+      Product product, String size, int quantity) async {
     if (_cartRef == null) return;
 
-    final index =
-        _cartData.items.indexWhere((item) => item.product.id == product.id);
+    final index = _cartData.items.indexWhere(
+        (item) => item.product.id == product.id && item.size == size);
 
     if (index >= 0) {
       if (quantity <= 0) {
-        await removeItem(product); // Remove if 0
+        await removeItem(product, size);
       } else {
         // Update Local
         _cartData.items[index].quantity = quantity;
 
-        // Update Firestore
-        await _cartRef!.doc(product.id).update({
+        // Update Firestore (Using Composite ID)
+        final String docId = '${product.id}_$size';
+        await _cartRef!.doc(docId).update({
           'quantity': quantity,
         });
       }
@@ -115,57 +127,47 @@ class CartService {
   }
 
   // --- 4. REMOVE ITEM ---
-  Future<void> removeItem(Product product) async {
+  Future<void> removeItem(Product product, String size) async {
     if (_cartRef == null) return;
 
     // Remove Local
-    _cartData.items.removeWhere((item) => item.product.id == product.id);
+    _cartData.items.removeWhere(
+        (item) => item.product.id == product.id && item.size == size);
 
     // Remove Firestore
-    await _cartRef!.doc(product.id).delete();
+    final String docId = '${product.id}_$size';
+    await _cartRef!.doc(docId).delete();
   }
 
-  Future<void> increaseQuantity(Product product) async {
-    final item = _cartData.items.firstWhere(
-      (item) => item.product.id == product.id,
-      orElse: () => CartItem(product: product, quantity: 0),
-    );
+  // --- HELPERS FOR UI (+ / - buttons) ---
 
-    if (item.quantity > 0) {
-      await updateQuantity(product, item.quantity + 1);
-    }
+  Future<void> increaseQuantity(CartItem item) async {
+    await updateQuantity(item.product, item.size, item.quantity + 1);
   }
 
-  Future<void> decreaseQuantity(Product product) async {
-    final item = _cartData.items.firstWhere(
-      (item) => item.product.id == product.id,
-      orElse: () => CartItem(product: product, quantity: 0),
-    );
-
+  Future<void> decreaseQuantity(CartItem item) async {
     if (item.quantity > 1) {
-      await updateQuantity(product, item.quantity - 1);
+      await updateQuantity(item.product, item.size, item.quantity - 1);
     } else {
-      await removeItem(product);
+      await removeItem(item.product, item.size);
     }
   }
 
-  // --- 5. CLEAR CART (After Checkout) ---
+  // --- 5. CLEAR CART ---
   Future<void> clearCart() async {
     if (_cartRef == null) return;
 
-    // Clear Local
     _cartData.items.clear();
     _cartData.discountAmount = 0.0;
     _cartData.appliedCoupon = null;
 
-    // Clear Firestore (Delete all docs in sub-collection)
     final snapshot = await _cartRef!.get();
     for (var doc in snapshot.docs) {
       await doc.reference.delete();
     }
   }
 
-  // --- COUPON LOGIC (Kept Local for simplicity) ---
+  // --- COUPON & CALCULATIONS (Unchanged) ---
   void applyDiscount(double amount, String coupon) {
     _cartData.discountAmount = amount;
     _cartData.appliedCoupon = coupon;
@@ -176,7 +178,6 @@ class CartService {
     _cartData.appliedCoupon = null;
   }
 
-  // --- CALCULATIONS ---
   double get totalPrice {
     return _cartData.items.fold(0.0, (sum, item) => sum + item.itemTotal);
   }

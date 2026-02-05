@@ -26,6 +26,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
     'Other'
   ];
 
+  final List<String> _allSizes = ['6', '7', '8', '9', '10', '11', '12'];
+  final List<String> _selectedSizes = [];
+
   bool _isLoading = false;
 
   @override
@@ -69,6 +72,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           _selectedCategory = newValue!;
                         });
                       },
+                    ),
+
+                    const SizedBox(height: 15),
+                    const Text("Available Sizes (UK)",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: _allSizes.map((size) {
+                        final isSelected = _selectedSizes.contains(size);
+                        return FilterChip(
+                          label: Text(size),
+                          selected: isSelected,
+                          selectedColor:
+                              AppConstants.primaryColor.withOpacity(0.2),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedSizes.add(size);
+                              } else {
+                                _selectedSizes.remove(size);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 30),
 
@@ -123,6 +152,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
         'price': price,
         'description': descController.text.trim(),
         'category': _selectedCategory, // <--- SAVING THE CATEGORY
+        'sizes': _selectedSizes.isEmpty
+            ? ['7', '8', '9']
+            : _selectedSizes, // Save List
         'createdAt': FieldValue.serverTimestamp(),
       });
 

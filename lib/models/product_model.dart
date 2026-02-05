@@ -6,7 +6,8 @@ class Product {
   final String image;
   final String price;
   final String description;
-  final String category; // <--- NEW FIELD
+  final String category;
+  final List<String> sizes;
   bool isWishlisted;
 
   Product({
@@ -15,7 +16,8 @@ class Product {
     required this.image,
     required this.price,
     required this.description,
-    required this.category, // <--- Add to constructor
+    required this.category,
+    required this.sizes,
     this.isWishlisted = false,
   });
 
@@ -29,6 +31,7 @@ class Product {
       description: data['description'] ?? '',
       // Default to 'Other' if category is missing in Firestore
       category: data['category'] ?? 'Other',
+      sizes: List<String>.from(data['sizes'] ?? ['7', '8', '9', '10']),
       isWishlisted: false,
     );
   }
