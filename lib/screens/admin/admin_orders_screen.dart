@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../models/order_model.dart' as model;
+import '../../utils/constants.dart';
+import '../../utils/extensions.dart';
 
 class AdminOrdersScreen extends StatefulWidget {
   const AdminOrdersScreen({super.key});
@@ -9,116 +12,171 @@ class AdminOrdersScreen extends StatefulWidget {
 }
 
 class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = "";
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  final Stream<QuerySnapshot> _ordersStream =
+      FirebaseFirestore.instance.collectionGroup('orders').snapshots();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Manage Orders")),
-      body: Column(
+      backgroundColor: Colors.grey.shade100,
+      appBar: AppBar(
+        title: const Text("Manage Orders"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        foregroundColor: Colors.black,
+      ),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _ordersStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError)
+            return Center(child: Text("Error: ${snapshot.error}"));
+          if (snapshot.connectionState == ConnectionState.waiting)
+            return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty)
+            return const Center(child: Text("No orders received yet"));
+
+          final orders = snapshot.data!.docs
+              .map((doc) {
+                try {
+                  return model.Order.fromFirestore(doc);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<model.Order>()
+              .toList();
+
+          // Sort: Newest First
+          orders.sort((a, b) => b.orderDate.compareTo(a.orderDate));
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            itemBuilder: (context, index) =>
+                _buildAdminOrderCard(orders[index]),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAdminOrderCard(model.Order order) {
+    // FIX: If order ID is short (like our new random ones), don't substring it
+    final displayId = order.orderId.length > 8
+        ? order.orderId.substring(0, 8).toUpperCase()
+        : order.orderId.toUpperCase();
+
+    final isCancelled = order.status == 'Cancelled';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        title: Text("Order #$displayId",
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(order.orderDate.toFormattedDate(),
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text("Total: ₹${order.totalAmount.toStringAsFixed(2)}",
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppConstants.primaryColor)),
+          ],
+        ),
+        trailing: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: _getStatusColor(order.status).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _getStatusColor(order.status)),
+          ),
+          child: Text(order.status.toUpperCase(),
+              style: TextStyle(
+                  color: _getStatusColor(order.status),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold)),
+        ),
         children: [
-          // --- SEARCH BAR ---
           Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: "Search Order ID or Status...",
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
-            ),
-          ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Customer Details:",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(order.shippingAddress.fullName),
+                Text(order.shippingAddress.phone),
+                Text(order.shippingAddress.fullAddress,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const Divider(height: 20),
+                const Text("Items:",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                ...order.items.map((item) => Text(
+                    "${item.quantity}x ${item.product.name} (${item.size})")),
+                const Divider(height: 20),
 
-          // --- ORDER LIST ---
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collectionGroup('orders')
-                  .orderBy('orderDate', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final docs = snapshot.data!.docs;
-
-                // FILTER LOGIC
-                final filteredDocs = docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final status =
-                      (data['status'] ?? '').toString().toLowerCase();
-                  final orderId =
-                      (data['orderId'] ?? '').toString().toLowerCase();
-
-                  return status.contains(_searchQuery) ||
-                      orderId.contains(_searchQuery);
-                }).toList();
-
-                if (filteredDocs.isEmpty) {
-                  return const Center(child: Text("No orders found"));
-                }
-
-                return ListView.builder(
-                  itemCount: filteredDocs.length,
-                  itemBuilder: (context, index) {
-                    final doc = filteredDocs[index];
-                    final data = doc.data() as Map<String, dynamic>;
-
-                    final String status = data['status'] ?? 'Processing';
-                    final String orderId = data['orderId'] ?? '???';
-                    final double total = (data['totalAmount'] ?? 0).toDouble();
-                    final date = DateTime.tryParse(data['orderDate'] ?? '') ??
-                        DateTime.now();
-
-                    // Formatting Order ID safely
-                    final shortId = orderId.length > 8
-                        ? orderId.substring(0, 8).toUpperCase()
-                        : orderId.toUpperCase();
-
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      child: ListTile(
-                        title: Text("Order #$shortId"),
-                        subtitle:
-                            Text("${date.toString().split(' ')[0]} • ₹$total"),
-                        trailing: Chip(
-                          label: Text(status),
-                          backgroundColor:
-                              _getStatusColor(status).withOpacity(0.2),
-                        ),
-                        onTap: () => _showStatusUpdateDialog(context, doc),
+                // ADMIN ACTIONS
+                if (!isCancelled) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatusButton(order, "Processing", Colors.orange),
+                      _buildStatusButton(order, "Shipped", Colors.blue),
+                      _buildStatusButton(order, "Delivered", Colors.green),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _cancelOrder(order),
+                      icon: const Icon(Icons.cancel, color: Colors.white),
+                      label: const Text("CANCEL ORDER PERMANENTLY",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                    );
-                  },
-                );
-              },
+                    ),
+                  )
+                ] else
+                  const Center(
+                    child: Text(
+                      "🚫 This order is Cancelled and cannot be modified.",
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
             ),
-          ),
+          )
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusButton(model.Order order, String status, Color color) {
+    final isSelected = order.status == status;
+    return InkWell(
+      onTap: () => _updateStatus(order, status),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color),
+        ),
+        child: Text(status,
+            style: TextStyle(
+                color: isSelected ? Colors.white : color,
+                fontWeight: FontWeight.bold,
+                fontSize: 12)),
       ),
     );
   }
@@ -136,29 +194,42 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     }
   }
 
-  void _showStatusUpdateDialog(BuildContext context, DocumentSnapshot doc) {
-    final List<String> statuses = [
-      'Processing',
-      'Shipped',
-      'Delivered',
-      'Cancelled'
-    ];
+  Future<void> _updateStatus(model.Order order, String newStatus) async {
+    try {
+      await FirebaseFirestore.instance
+          .doc(order.path)
+          .update({'status': newStatus});
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Order marked as $newStatus")));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text("Update Failed: $e"), backgroundColor: Colors.red));
+    }
+  }
 
-    showDialog(
+  // --- IRREVERSIBLE CANCEL ACTION ---
+  Future<void> _cancelOrder(model.Order order) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text("Update Status"),
-        children: statuses
-            .map((status) => SimpleDialogOption(
-                  padding: const EdgeInsets.all(15),
-                  child: Text(status, style: const TextStyle(fontSize: 16)),
-                  onPressed: () async {
-                    await doc.reference.update({'status': status});
-                    if (context.mounted) Navigator.pop(ctx);
-                  },
-                ))
-            .toList(),
+      builder: (ctx) => AlertDialog(
+        title: const Text("Cancel Order?"),
+        content: const Text(
+            "Are you sure you want to CANCEL this order? \n\n⚠️ This action CANNOT be undone."),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text("No")),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text("Yes, Cancel",
+                  style: TextStyle(color: Colors.white))),
+        ],
       ),
     );
+
+    if (confirm == true) {
+      _updateStatus(order, "Cancelled");
+    }
   }
 }

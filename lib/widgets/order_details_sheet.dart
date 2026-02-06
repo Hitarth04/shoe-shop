@@ -176,12 +176,14 @@ class OrderDetailsSheet extends StatelessWidget {
                       // --- BILL SUMMARY ---
                       _buildDetailRow("Subtotal", "₹${order.subtotalAmount}"),
                       _buildDetailRow("Shipping", "₹${order.shippingAmount}"),
-                      _buildDetailRow("Tax (18%)", "₹${order.taxAmount}"),
+                      _buildDetailRow("Tax (18%)",
+                          "₹${order.taxAmount.toStringAsFixed(2)}"),
                       if (order.discountAmount > 0)
                         _buildDetailRow("Discount", "-₹${order.discountAmount}",
                             isGreen: true),
                       const Divider(),
-                      _buildDetailRow("Total Amount", "₹${order.totalAmount}",
+                      _buildDetailRow("Total Amount",
+                          "₹${order.totalAmount.toStringAsFixed(2)}",
                           isBold: true),
 
                       const SizedBox(height: 10),

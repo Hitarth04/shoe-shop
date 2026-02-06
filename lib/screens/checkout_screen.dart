@@ -1,14 +1,14 @@
+import 'dart:math'; // Import Math for random ID
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 import '../models/address_model.dart';
 import '../models/order_model.dart';
+import '../models/cart_model.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
+import '../services/address_service.dart';
+import '../services/payment_service.dart';
 import '../widgets/address_selection_sheet.dart';
 import '../utils/constants.dart';
-import '../utils/validators.dart';
-import '../models/cart_model.dart';
-import '../services/address_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final VoidCallback? onPaymentComplete;
@@ -26,22 +26,226 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
   final CartService cartService = CartService();
   final AddressService _addressService = AddressService();
+  final OrderService _orderService = OrderService();
 
-  List<Address> _addresses = [];
+  late PaymentService _paymentService;
+
   Address? _selectedAddress;
-
-  String _selectedPaymentMethod = 'credit_card';
   String? _appliedCoupon;
   double _discountAmount = 0.0;
-
-  // FIX 1: Add a flag to prevent double-taps
   bool _isPaymentProcessing = false;
 
   @override
   void initState() {
     super.initState();
     cartService.initialize();
-    _loadAddresses();
+    _loadDefaultAddress();
+
+    _paymentService = PaymentService(
+      onSuccess: _handlePaymentSuccess,
+      onFailure: _handlePaymentFailure,
+    );
+    _paymentService.initialize();
+  }
+
+  @override
+  void dispose() {
+    _couponController.dispose();
+    _paymentService.dispose();
+    super.dispose();
+  }
+
+  // --- NEW HELPER: Generate Short Unique ID ---
+  String _generateOrderId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rnd = Random();
+    // Generates format: "XY12-AB34"
+    String part1 = String.fromCharCodes(Iterable.generate(
+        4, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+    String part2 = String.fromCharCodes(Iterable.generate(
+        4, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+    return '$part1-$part2';
+  }
+
+  Future<void> _loadDefaultAddress() async {
+    final loadedAddresses = await _addressService.getAddresses();
+    if (loadedAddresses.isNotEmpty) {
+      setState(() {
+        _selectedAddress = loadedAddresses.firstWhere(
+          (addr) => addr.isDefault,
+          orElse: () => loadedAddresses.first,
+        );
+      });
+    }
+  }
+
+  void _applyCoupon() {
+    final couponCode = _couponController.text.trim().toUpperCase();
+    if (couponCode.isEmpty) return;
+
+    if (!AppConstants.availableCoupons.containsKey(couponCode)) {
+      _showError("Invalid Coupon Code");
+      return;
+    }
+
+    final double discountValue = AppConstants.availableCoupons[couponCode]!;
+    double calculatedDiscount = 0.0;
+
+    if (couponCode == 'FREESHIP') {
+      calculatedDiscount = cartService.shippingAmount;
+    } else if (discountValue < 1.0) {
+      calculatedDiscount = cartService.totalPrice * discountValue;
+    } else {
+      calculatedDiscount = discountValue;
+    }
+
+    double maxPossibleDiscount =
+        cartService.totalPrice + cartService.shippingAmount;
+    if (calculatedDiscount > maxPossibleDiscount) {
+      calculatedDiscount = maxPossibleDiscount;
+    }
+
+    setState(() {
+      _appliedCoupon = couponCode;
+      _discountAmount = calculatedDiscount;
+      _couponController.text = couponCode;
+      cartService.applyDiscount(calculatedDiscount, couponCode);
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(
+              "Coupon applied! Saved ₹${calculatedDiscount.toStringAsFixed(0)}"),
+          backgroundColor: Colors.green),
+    );
+  }
+
+  void _removeCoupon() {
+    setState(() {
+      _appliedCoupon = null;
+      _discountAmount = 0.0;
+      _couponController.clear();
+      cartService.removeDiscount();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text("Coupon removed"), backgroundColor: Colors.orange),
+    );
+  }
+
+  void _initiatePayment() {
+    if (_isPaymentProcessing) return;
+
+    if (cartService.items.isEmpty) {
+      _showError("Your cart is empty");
+      return;
+    }
+
+    if (_selectedAddress == null) {
+      _showError("Please select a shipping address");
+      return;
+    }
+
+    setState(() => _isPaymentProcessing = true);
+
+    if (cartService.finalTotal <= 0) {
+      _handlePaymentSuccess("FREE-${_generateOrderId()}");
+      return;
+    }
+
+    try {
+      _paymentService.openCheckout(
+        amount: cartService.finalTotal,
+        mobile: _selectedAddress!.phone,
+        email: 'user@shoeapp.com',
+      );
+    } catch (e) {
+      _handlePaymentFailure("Could not open payment: $e");
+    }
+  }
+
+  void _handlePaymentSuccess(String paymentId) async {
+    await _saveOrderToFirebase(paymentId);
+  }
+
+  void _handlePaymentFailure(String error) {
+    setState(() => _isPaymentProcessing = false);
+    _showError(error);
+  }
+
+  Future<void> _saveOrderToFirebase(String paymentId) async {
+    try {
+      final List<CartItem> itemsSnapshot =
+          List<CartItem>.from(cartService.items);
+
+      final newOrder = Order(
+        id: '',
+        // FIX: Use the new Random ID Generator
+        orderId: _generateOrderId(),
+        userId: '',
+        items: itemsSnapshot,
+        totalAmount: cartService.finalTotal,
+        subtotalAmount: cartService.totalPrice,
+        shippingAmount: cartService.shippingAmount,
+        taxAmount: cartService.taxAmount,
+        discountAmount: cartService.discountAmount,
+        shippingAddress: _selectedAddress!,
+        orderDate: DateTime.now(),
+        status: "Processing",
+        paymentMethod:
+            cartService.finalTotal <= 0 ? "Free Order" : "Online (Razorpay)",
+        paymentId: paymentId,
+      );
+
+      await _orderService.saveOrder(newOrder);
+      await cartService.clearCart();
+
+      if (mounted) {
+        setState(() => _isPaymentProcessing = false);
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text("Order Placed! 🎉"),
+            content: Text("Your Order ID is #${newOrder.orderId}"),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  widget.onPaymentComplete?.call();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                },
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppConstants.secondaryColor),
+                child: const Text("Continue Shopping",
+                    style: TextStyle(color: Colors.white)),
+              )
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      _handlePaymentFailure("Failed to save order: $e");
+    }
+  }
+
+  void _changeAddress() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => AddressSelectionSheet(
+        onAddressSelected: (address) async {
+          setState(() => _selectedAddress = address);
+          await _addressService.setDefaultAddress(address.id);
+        },
+      ),
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 
   @override
@@ -79,7 +283,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildAddressSection() {
     return Card(
-      color: AppConstants.surfaceColor,
+      color: Colors.grey.shade50,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -88,14 +296,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  "Shipping Address",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                const Text("Shipping Address",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 TextButton(
-                  onPressed: _changeAddress,
-                  child: const Text("Change"),
-                ),
+                    onPressed: _changeAddress, child: const Text("Change")),
               ],
             ),
             const SizedBox(height: 8),
@@ -103,58 +308,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
+                  Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
                           color: AppConstants.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _selectedAddress!.tag,
+                          borderRadius: BorderRadius.circular(4)),
+                      child: Text(_selectedAddress!.tag,
                           style: const TextStyle(
-                            color: AppConstants.primaryColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (_selectedAddress!.isDefault)
-                        Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            "Default",
-                            style: TextStyle(
+                              color: AppConstants.primaryColor,
                               fontSize: 12,
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                              fontWeight: FontWeight.bold)),
+                    ),
+                  ]),
                   const SizedBox(height: 8),
-                  Text(_selectedAddress!.fullName),
+                  Text(_selectedAddress!.fullName,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   Text(_selectedAddress!.phone),
-                  const SizedBox(height: 4),
-                  Text(
-                    _selectedAddress!.fullAddress,
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                  Text(_selectedAddress!.fullAddress,
+                      style: const TextStyle(color: Colors.grey)),
                 ],
-              ),
+              )
+            else
+              const Text("No address selected. Please add one."),
           ],
         ),
       ),
@@ -163,23 +340,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildOrderSummary() {
     return Card(
-      color: AppConstants.surfaceColor,
-      elevation: 2,
+      color: Colors.grey.shade50,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Order Summary",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text("Order Summary",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
             _buildSummaryRow(
                 "Subtotal", "₹${cartService.totalPrice.toStringAsFixed(2)}"),
@@ -189,16 +361,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 "Tax (18%)", "₹${cartService.taxAmount.toStringAsFixed(2)}"),
             if (_discountAmount > 0)
               _buildSummaryRow(
-                "Discount",
-                "-₹${_discountAmount.toStringAsFixed(2)}",
-                isDiscount: true,
-              ),
+                  "Discount", "-₹${_discountAmount.toStringAsFixed(2)}",
+                  isDiscount: true),
             const Divider(height: 30),
             _buildSummaryRow(
-              "Total",
-              "₹${cartService.finalTotal.toStringAsFixed(2)}",
-              isTotal: true,
-            ),
+                "Total", "₹${cartService.finalTotal.toStringAsFixed(2)}",
+                isTotal: true),
           ],
         ),
       ),
@@ -212,26 +380,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: isTotal ? 18 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isDiscount ? Colors.green : Colors.black,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: isTotal ? 20 : 16,
-              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
-              color: isDiscount
-                  ? Colors.green
-                  : isTotal
-                      ? AppConstants.primaryColor
-                      : Colors.black,
-            ),
-          ),
+          Text(label,
+              style: TextStyle(
+                  fontSize: isTotal ? 18 : 16,
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                  color: isDiscount ? Colors.green : Colors.black)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: isTotal ? 20 : 16,
+                  fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+                  color: isDiscount
+                      ? Colors.green
+                      : (isTotal ? AppConstants.primaryColor : Colors.black))),
         ],
       ),
     );
@@ -239,23 +399,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildCouponSection() {
     return Card(
-      color: AppConstants.surfaceColor,
-      elevation: 2,
+      color: Colors.grey.shade50,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Apply Coupon",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text("Apply Coupon",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
             if (_appliedCoupon != null)
               Container(
@@ -273,27 +428,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Coupon Applied: $_appliedCoupon",
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          Text(
-                            "You saved ₹${_discountAmount.toStringAsFixed(2)}",
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.green,
-                            ),
-                          ),
+                          Text("Coupon: $_appliedCoupon",
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green)),
+                          Text("Saved ₹${_discountAmount.toStringAsFixed(2)}",
+                              style: const TextStyle(
+                                  fontSize: 12, color: Colors.green)),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 20),
-                      onPressed: _removeCoupon,
-                    ),
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: _removeCoupon),
                   ],
                 ),
               ),
@@ -304,14 +451,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: TextField(
                       controller: _couponController,
                       decoration: InputDecoration(
-                        hintText: "Enter coupon code",
+                        hintText: "Enter code",
+                        fillColor: Colors.white,
+                        filled: true,
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
+                            horizontal: 16, vertical: 14),
                       ),
                     ),
                   ),
@@ -319,43 +466,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ElevatedButton(
                     onPressed: _applyCoupon,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.secondaryColor,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Apply",
-                      style: TextStyle(color: Colors.white),
-                    ),
+                        backgroundColor: AppConstants.secondaryColor),
+                    child: const Text("Apply",
+                        style: TextStyle(color: Colors.white)),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              const Text(
-                "Available coupons:",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 15),
+              const Text("Available coupons:",
+                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: AppConstants.availableCoupons.entries.map((entry) {
-                  return Chip(
+                  return ActionChip(
                     label: Text(entry.key),
-                    backgroundColor: Colors.grey.shade100,
-                    side: BorderSide(color: AppConstants.accentColor),
-                    onDeleted: () {
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                        color: AppConstants.primaryColor.withOpacity(0.5)),
+                    onPressed: () {
                       _couponController.text = entry.key;
+                      _applyCoupon();
                     },
-                    deleteIcon: const Icon(Icons.content_copy, size: 16),
                   );
                 }).toList(),
               ),
@@ -368,135 +501,61 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildPaymentMethodSection() {
     return Card(
-      color: AppConstants.surfaceColor,
-      elevation: 2,
+      color: Colors.grey.shade50,
+      elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Payment Method",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            const Text("Payment Method",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 15),
             _buildPaymentOption(
-              value: 'credit_card',
-              icon: Icons.credit_card,
-              title: "Credit/Debit Card",
-              subtitle: "Pay with your card",
-            ),
-            const SizedBox(height: 10),
-            _buildPaymentOption(
-              value: 'upi',
-              icon: Icons.phone_android,
-              title: "UPI",
-              subtitle: "Google Pay, PhonePe, Paytm",
-            ),
-            const SizedBox(height: 10),
-            _buildPaymentOption(
-              value: 'cod',
-              icon: Icons.money,
-              title: "Cash on Delivery",
-              subtitle: "Pay when you receive",
-            ),
-            const SizedBox(height: 10),
-            _buildPaymentOption(
-              value: 'net_banking',
-              icon: Icons.account_balance,
-              title: "Net Banking",
-              subtitle: "All major banks",
-            ),
+                value: 'online',
+                icon: Icons.credit_card,
+                title: "Online Payment",
+                subtitle: "Cards, UPI, NetBanking"),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPaymentOption({
-    required String value,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedPaymentMethod = value;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _selectedPaymentMethod == value
-              ? AppConstants.accentColor.withOpacity(0.1)
-              : Colors.grey.shade50,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _selectedPaymentMethod == value
-                ? AppConstants.primaryColor
-                : Colors.transparent,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _selectedPaymentMethod == value
-                    ? AppConstants.primaryColor
-                    : Colors.grey.shade300,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: _selectedPaymentMethod == value
-                    ? Colors.white
-                    : Colors.grey.shade700,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
+  Widget _buildPaymentOption(
+      {required String value,
+      required IconData icon,
+      required String title,
+      required String subtitle}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppConstants.primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppConstants.primaryColor, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppConstants.primaryColor),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
                     style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(subtitle,
+                    style:
+                        TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              ],
             ),
-            Radio(
-              value: value,
-              groupValue: _selectedPaymentMethod,
-              onChanged: (value) {
-                setState(() {
-                  _selectedPaymentMethod = value!;
-                });
-              },
-              activeColor: AppConstants.primaryColor,
-            ),
-          ],
-        ),
+          ),
+          const Icon(Icons.check_circle, color: AppConstants.primaryColor),
+        ],
       ),
     );
   }
@@ -506,280 +565,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       width: double.infinity,
       height: 55,
       child: ElevatedButton(
-        // FIX 2: Disable button if processing
-        onPressed: _isPaymentProcessing ? null : _processPayment,
+        onPressed: _isPaymentProcessing ? null : _initiatePayment,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppConstants.secondaryColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         child: _isPaymentProcessing
             ? const SizedBox(
-                width: 20,
-                height: 20,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
+                    color: Colors.white, strokeWidth: 2))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    "Proceed to Payment",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  const Text("Pay & Order",
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                   const SizedBox(width: 10),
-                  Text(
-                    "₹${cartService.finalTotal.toStringAsFixed(2)}",
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                  Text("₹${cartService.finalTotal.toStringAsFixed(0)}",
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
                 ],
               ),
       ),
     );
-  }
-
-  void _changeAddress() async {
-    await _loadAddresses();
-
-    final selected = await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => AddressSelectionSheet(
-        addresses: _addresses,
-        selectedAddress: _selectedAddress,
-        onAddressSelected: (address) async {
-          setState(() {
-            _selectedAddress = address;
-          });
-
-          await _addressService.setDefaultAddress(address.id);
-        },
-      ),
-    );
-
-    if (selected != null && mounted) {
-      setState(() {
-        _selectedAddress = selected;
-      });
-    }
-  }
-
-  Future<void> _loadAddresses() async {
-    final loadedAddresses = await _addressService.getAddresses();
-
-    Address? defaultAddress;
-    for (final addr in loadedAddresses) {
-      if (addr.isDefault) {
-        defaultAddress = addr;
-        break;
-      }
-    }
-
-    setState(() {
-      _addresses = loadedAddresses;
-      _selectedAddress = defaultAddress ??
-          (loadedAddresses.isNotEmpty ? loadedAddresses.first : null);
-    });
-  }
-
-  void _applyCoupon() {
-    final couponCode = _couponController.text.trim().toUpperCase();
-
-    final error =
-        Validators.validateCoupon(couponCode, AppConstants.availableCoupons);
-    if (error != null) {
-      _showError(error);
-      return;
-    }
-
-    final discount = AppConstants.availableCoupons[couponCode]!;
-    double discountAmount = 0.0;
-
-    if (discount <= 1.0) {
-      discountAmount = cartService.totalPrice * discount;
-    } else {
-      discountAmount = discount;
-    }
-
-    final maxDiscount = cartService.totalPrice * 0.9;
-    if (discountAmount > maxDiscount) {
-      discountAmount = maxDiscount;
-    }
-
-    setState(() {
-      _appliedCoupon = couponCode;
-      _discountAmount = discountAmount;
-      _couponController.clear();
-      cartService.applyDiscount(discountAmount, couponCode);
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            Text("Coupon applied! Saved ₹${discountAmount.toStringAsFixed(2)}"),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-
-  void _removeCoupon() {
-    setState(() {
-      _appliedCoupon = null;
-      _discountAmount = 0.0;
-      cartService.removeDiscount();
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Coupon removed"),
-        backgroundColor: Colors.orange,
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  void _processPayment() async {
-    if (_isPaymentProcessing) return;
-
-    if (cartService.items.isEmpty) {
-      _showError("Your cart is empty");
-      return;
-    }
-
-    if (_selectedAddress == null) {
-      _showError("Please select a shipping address");
-      return;
-    }
-
-    setState(() {
-      _isPaymentProcessing = true;
-    });
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: AppConstants.primaryColor),
-      ),
-    );
-
-    try {
-      // FIX: Explicitly type the list as <CartItem>
-      final List<CartItem> itemsSnapshot =
-          List<CartItem>.from(cartService.items);
-
-      // 1. Create the Order Object
-      final newOrder = Order(
-        orderId: const Uuid().v4(),
-        items: itemsSnapshot, // Now this matches List<CartItem>
-        totalAmount: cartService.finalTotal,
-        subtotalAmount: cartService.totalPrice,
-        shippingAmount: cartService.shippingAmount,
-        taxAmount: cartService.taxAmount,
-        discountAmount: cartService.discountAmount,
-        shippingAddress: _selectedAddress!,
-        orderDate: DateTime.now(),
-        status: "Processing",
-        appliedCoupon: cartService.appliedCoupon,
-      );
-
-      // 2. Save Order to Firestore
-      await OrderService().saveOrder(newOrder);
-
-      // 3. Clear the Firestore Cart
-      await cartService.clearCart();
-
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-
-      if (widget.onPaymentComplete != null) {
-        widget.onPaymentComplete!();
-      }
-
-      final shouldContinue = await showDialog<bool>(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => AlertDialog(
-              title: const Text("Payment Successful! 🎉"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 60),
-                  const SizedBox(height: 20),
-                  Text(
-                    "Order Total: ₹${newOrder.totalAmount.toStringAsFixed(2)}\n"
-                    "Items: ${itemsSnapshot.length}",
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Your order has been saved to the database!",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              actions: [
-                Center(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.secondaryColor,
-                      minimumSize: const Size(120, 45),
-                    ),
-                    child: const Text(
-                      "Continue Shopping",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ) ??
-          true;
-
-      if (shouldContinue && mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-    } catch (e) {
-      if (mounted) Navigator.of(context).pop();
-      _showError("Failed to place order: $e");
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isPaymentProcessing = false;
-        });
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _couponController.dispose();
-    super.dispose();
   }
 }
