@@ -18,9 +18,7 @@ class Order {
   final DateTime orderDate;
   final String paymentMethod;
   final String paymentId;
-
-  // NEW: Store the exact database path for Admin updates
-  final String path;
+  final String path; // To store document reference
 
   Order({
     required this.id,
@@ -37,9 +35,10 @@ class Order {
     required this.orderDate,
     required this.paymentMethod,
     this.paymentId = '',
-    this.path = '', // Default empty
+    this.path = '',
   });
 
+  // --- SAVE TO DATABASE ---
   Map<String, dynamic> toMap() {
     return {
       'orderId': orderId,
@@ -52,7 +51,8 @@ class Order {
       'status': status,
       'paymentMethod': paymentMethod,
       'paymentId': paymentId,
-      'orderDate': Timestamp.fromDate(orderDate),
+      'orderDate': Timestamp.fromDate(orderDate), // Always save as Timestamp
+
       'shippingAddress': {
         'fullName': shippingAddress.fullName,
         'phone': shippingAddress.phone,
@@ -76,38 +76,45 @@ class Order {
     };
   }
 
+  // --- READ FROM DATABASE (SAFE PARSING) ---
   factory Order.fromFirestore(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
 
+    // 1. Safe Number Parsing (Fixes int vs double crashes)
     double toDouble(dynamic val) {
       if (val == null) return 0.0;
       if (val is num) return val.toDouble();
       return double.tryParse(val.toString()) ?? 0.0;
     }
 
+    // 2. Safe Date Parsing (Fixes String vs Timestamp crashes)
     DateTime parseDate(dynamic val) {
       if (val == null) return DateTime.now();
-      if (val is Timestamp) return val.toDate();
-      if (val is String) return DateTime.parse(val);
+      if (val is Timestamp) return val.toDate(); // Works for new data
+      if (val is String)
+        return DateTime.tryParse(val) ?? DateTime.now(); // Works for old data
       return DateTime.now();
     }
 
     return Order(
       id: doc.id,
-      // NEW: Save the document reference path!
-      path: doc.reference.path,
-
+      path: doc.reference.path, // Store path for Admin updates
       orderId: data['orderId'] ?? '',
       userId: data['userId'] ?? '',
+
       totalAmount: toDouble(data['totalAmount']),
       subtotalAmount: toDouble(data['subtotalAmount']),
       shippingAmount: toDouble(data['shippingAmount']),
       taxAmount: toDouble(data['taxAmount']),
       discountAmount: toDouble(data['discountAmount']),
+
       status: data['status'] ?? 'Processing',
       paymentMethod: data['paymentMethod'] ?? 'COD',
       paymentId: data['paymentId'] ?? '',
+
+      // FIX IS HERE: Use the helper
       orderDate: parseDate(data['orderDate']),
+
       shippingAddress: Address(
         id: '',
         tag: data['shippingAddress']['tag'] ?? 'Shipping',
@@ -119,6 +126,7 @@ class Order {
         pincode: data['shippingAddress']['pincode'] ?? '',
         isDefault: false,
       ),
+
       items: (data['items'] as List<dynamic>).map((itemData) {
         return CartItem(
           product: Product(
