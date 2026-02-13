@@ -20,10 +20,8 @@ class OrderService {
   Future<void> saveOrder(Order order) async {
     if (_ordersRef == null) return;
     try {
-      // FIX: Inject the REAL userId into the map before saving
       final orderMap = order.toMap();
-      orderMap['userId'] = _userId; // <--- This ensures it is never empty
-
+      orderMap['userId'] = _userId;
       await _ordersRef!.doc(order.orderId).set(orderMap);
     } catch (e) {
       print("Error saving order: $e");
@@ -31,15 +29,26 @@ class OrderService {
     }
   }
 
-  Future<List<Order>> getOrders() async {
-    if (_ordersRef == null) return [];
-    try {
-      final snapshot =
-          await _ordersRef!.orderBy('orderDate', descending: true).get();
-      return snapshot.docs.map((doc) => Order.fromFirestore(doc)).toList();
-    } catch (e) {
-      print("CRITICAL ERROR fetching orders: $e");
-      return [];
-    }
+  // --- NEW: REAL-TIME STREAM ---
+  Stream<List<Order>> getOrdersStream() {
+    if (_ordersRef == null) return Stream.value([]);
+
+    return _ordersRef!
+        .orderBy('orderDate', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            try {
+              // Use our safe parser
+              return Order.fromFirestore(doc);
+            } catch (e) {
+              print("Error parsing order ${doc.id}: $e");
+              return null;
+            }
+          })
+          .whereType<Order>()
+          .toList();
+    });
   }
 }
